@@ -1,4 +1,4 @@
-package org.quetoo.update;
+package org.quetoo.update.aws;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -16,6 +16,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.quetoo.update.Sync;
 
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
@@ -27,31 +28,10 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
  * 
  * @author jdolan
  */
-public class BucketSync {
+public class S3BucketSync implements Sync {
 
 	/**
-	 * A listener for observing {@link BucketSync} instances.
-	 */
-	public interface Listener {
-
-		/**
-		 * @param count The count of objects to be synchronized.
-		 */
-		void onCountObjects(int count);
-
-		/**
-		 * @param name The object name to be synchronized.
-		 */
-		void onSyncObject(String name);
-
-		/**
-		 * @param file The file to be removed.
-		 */
-		void onRemoveFile(File file);
-	}
-
-	/**
-	 * A builder for creating {@link BucketSync} instances.
+	 * A builder for creating {@link S3BucketSync} instances.
 	 */
 	public static class Builder {
 
@@ -91,8 +71,8 @@ public class BucketSync {
 			return this;
 		}
 
-		public BucketSync build() {
-			return new BucketSync(this);
+		public S3BucketSync build() {
+			return new S3BucketSync(this);
 		}
 	}
 
@@ -103,11 +83,11 @@ public class BucketSync {
 	private final Listener listener;
 
 	/**
-	 * Instantiates a BucketSync with the given Builder.
+	 * Instantiates an {@link S3BucketSync} with the given Builder.
 	 * 
 	 * @param builder The Builder.
 	 */
-	private BucketSync(@NotNull final Builder builder) {
+	private S3BucketSync(@NotNull final Builder builder) {
 
 		this.amazonS3Client = builder.amazonS3Client;
 		this.httpClient = builder.httpClient;
@@ -193,15 +173,10 @@ public class BucketSync {
 		return entries;
 	}
 
-	/**
-	 * Synchronizes this bucket to its configured destination.
-	 * 
-	 * @return A List of all Files synchronized from the S3 bucket.
-	 * @throws IOException If an error occurs.
-	 */
+	@Override
 	public Set<File> sync() throws IOException {
 
-		FileUtils.forceMkdirParent(destination);
+		FileUtils.forceMkdir(destination);
 
 		List<S3ObjectSummary> summaries = new ArrayList<>();
 

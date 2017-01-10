@@ -1,4 +1,4 @@
-package org.quetoo.update;
+package org.quetoo.update.aws;
 
 import static com.amazonaws.regions.Regions.US_WEST_2;
 import static org.junit.Assert.assertFalse;
@@ -14,6 +14,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.junit.Before;
 import org.junit.Test;
+import org.quetoo.update.Sync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,17 +22,17 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.services.s3.AmazonS3Client;
 
 /**
- * Integration tests for the {@link BucketSync} class.
+ * Integration tests for the {@link S3BucketSync} class.
  * 
  * @author jdolan
  */
-public class BucketSyncTest implements BucketSync.Listener {
+public class S3BucketSyncTest implements Sync.Listener {
 		
 	private AmazonS3Client amazonS3Client;
 	
 	private CloseableHttpClient httpClient;
 	
-	private BucketSync bucketSync;
+	private S3BucketSync s3BucketSync;
 		
 	private final Logger log = LoggerFactory.getLogger(getClass());
 	
@@ -41,13 +42,14 @@ public class BucketSyncTest implements BucketSync.Listener {
 		final String tmp = FileUtils.getTempDirectoryPath();
 
 		final File destination = new File(FilenameUtils.concat(tmp, "radiantjs"));
+		log.info("Syncing to desination {}", destination);
 				
 		amazonS3Client = new AmazonS3Client();
 		amazonS3Client.setRegion(Region.getRegion(US_WEST_2));
 		
 		httpClient = HttpClients.createDefault();
 		
-		bucketSync = new BucketSync.Builder()
+		s3BucketSync = new S3BucketSync.Builder()
 				.withAmazonS3Client(new AmazonS3Client())
 				.withHttpClient(httpClient)
 				.withBucketName("radiantjs")
@@ -76,7 +78,7 @@ public class BucketSyncTest implements BucketSync.Listener {
 	@Test
 	public void sync() throws IOException {
 		
-		Set<File> files = bucketSync.sync();
+		Set<File> files = s3BucketSync.sync();
 		
 		assertNotNull(files);
 		assertFalse(files.isEmpty());
