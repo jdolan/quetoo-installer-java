@@ -70,12 +70,18 @@ public class Manager {
 				return !files.contains(file);
 			}).forEach(file -> {
 				FileUtils.deleteQuietly(file);
+				
 				log.info("Removed {}", file);
 			});
 		}
 	}
 	
 	private void onNext(final File file) {
+		
+		if (file.getParentFile().equals(config.getBin())) {
+			file.setExecutable(true);
+		}
+		
 		log.info("Updated {}", file);
 	}
 	
@@ -96,9 +102,7 @@ public class Manager {
 		
 		files.subscribe(this::onNext, this::onError);
 		
-		files.collectInto(new HashSet<File>(), (set, file) -> {
-			set.add(file);
-		}).subscribe(this::prune);
+		files.collectInto(new HashSet<File>(), (set, file) -> set.add(file)).subscribe(this::prune);
 	}
 	
 	/**
