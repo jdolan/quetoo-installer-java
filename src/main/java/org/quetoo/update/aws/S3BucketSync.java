@@ -5,9 +5,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -39,6 +39,7 @@ public class S3BucketSync implements Sync {
 		private CloseableHttpClient httpClient;
 		private String bucketName;
 		private Predicate<S3ObjectSummary> predicate;
+		private Function<S3ObjectSummary, File> mapper;
 		private File destination;
 
 		public Builder withAmazonS3Client(final AmazonS3Client amazonS3Client) {
@@ -58,6 +59,11 @@ public class S3BucketSync implements Sync {
 		
 		public Builder withPredicate(final Predicate<S3ObjectSummary> predicate) {
 			this.predicate = predicate;
+			return this;
+		}
+		
+		public Builder withMapper(final Function<S3ObjectSummary, File> mapper) {
+			this.mapper= mapper;
 			return this;
 		}
 
@@ -80,6 +86,7 @@ public class S3BucketSync implements Sync {
 	private final CloseableHttpClient httpClient;
 	private final String bucketName;
 	private final Predicate<S3ObjectSummary> predicate;
+	private final Function<S3ObjectSummary, File> mapper;
 	private final File destination;
 
 	/**
@@ -93,18 +100,16 @@ public class S3BucketSync implements Sync {
 		this.httpClient = builder.httpClient;
 		this.bucketName = builder.bucketName;
 		this.predicate = builder.predicate;
+		this.mapper = builder.mapper;
 		this.destination = builder.destination;
 	}
 
 	private File sync(final S3ObjectSummary summary) throws IOException {
 
-		final String path = FilenameUtils.separatorsToSystem(summary.getKey());
-		final String absPath = FilenameUtils.concat(destination.getAbsolutePath(), path);
-
-		final File file = new File(absPath);
-		
 		final boolean wantsDirectory = summary.getKey().endsWith("/");
 
+		final File file = new File(destination, mapper.apply(summary).getPath());
+		
 		if (file.exists()) {
 			final boolean isDirectory = file.isDirectory();
 			
