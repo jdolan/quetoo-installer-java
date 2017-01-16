@@ -2,23 +2,16 @@ package org.quetoo.update.aws;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.amazonaws.regions.Region;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3Client;
 
 import io.reactivex.Observable;
 
@@ -29,30 +22,17 @@ import io.reactivex.Observable;
  */
 public class S3BucketSyncTest {
 		
-	private AmazonS3Client amazonS3Client;
-	
-	private CloseableHttpClient httpClient;
-	
 	private S3BucketSync s3BucketSync;
 		
-	private final Logger log = LoggerFactory.getLogger(getClass());
-	
 	@Before
 	public void before() {
 		
-		final String tmp = FileUtils.getTempDirectoryPath();
-
-		final File destination = new File(FilenameUtils.concat(tmp, "quetoo"));
-		log.info("Syncing to desination {}", destination);
-				
-		amazonS3Client = new AmazonS3Client();
-		amazonS3Client.setRegion(Region.getRegion(Regions.US_EAST_1));
+		final File destination = new File(FileUtils.getTempDirectory(), "quetoo");
 		
-		httpClient = HttpClients.createDefault();
+		System.out.println("Syncing to desination " + destination);
 		
 		s3BucketSync = new S3BucketSync.Builder()
-				.withAmazonS3Client(new AmazonS3Client())
-				.withHttpClient(httpClient)
+				.withHttpClient(HttpClients.createDefault())
 				.withBucketName("quetoo")
 				.withPredicate(s -> s.getKey().startsWith("x86_64-apple-darwin"))
 				.withDestination(destination)
@@ -62,11 +42,12 @@ public class S3BucketSyncTest {
 	}
 	
 	private void onNext(final File file) {
-		log.debug(file.toString());
+		assertTrue(file.exists());
+		System.out.println("Updated " + file);
 	}
 	
 	private void onError(final Throwable t) {
-		log.error(t.getMessage(), t);
+		t.printStackTrace(System.err);
 		fail();
 	}
 

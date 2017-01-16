@@ -3,12 +3,9 @@ package org.quetoo.update;
 import java.io.File;
 import java.util.Properties;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-
-import com.amazonaws.services.s3.AmazonS3Client;
 
 /**
  * The configuration container.
@@ -24,7 +21,6 @@ public class Config {
 	
 	private static final Config defaults = new Config();
 
-	private final AmazonS3Client amazonS3Client;
 	private final CloseableHttpClient httpClient;
 	private final Arch arch;
 	private final Host host;
@@ -38,20 +34,19 @@ public class Config {
 		this(new Properties(System.getProperties()));
 	}
 	
+	/**
+	 * Instantiates a Config with the specified Properties.
+	 * 
+	 * @param properties The Properties to initialize with.
+	 */
 	public Config(final Properties properties) {
 		
-		amazonS3Client = new AmazonS3Client();
-
 		httpClient = HttpClients.createDefault();
-
+		
 		arch = Arch.getArch(properties.getProperty(ARCH, SystemUtils.OS_ARCH));
 		host = Host.getHost(properties.getProperty(HOST, SystemUtils.OS_NAME));
-		dir = new File(properties.getProperty(DIR, getDefaultDir()));
+		dir = new File(properties.getProperty(DIR, SystemUtils.USER_DIR));
 		prune = Boolean.parseBoolean(properties.getProperty(PRUNE, "false"));
-	}
-
-	public AmazonS3Client getAmazonS3Client() {
-		return amazonS3Client;
 	}
 
 	public CloseableHttpClient getHttpClient() {
@@ -112,10 +107,6 @@ public class Config {
 	
 	public Boolean getPrune() {
 		return prune;
-	}
-	
-	public static String getDefaultDir() {
-		return FileUtils.toFile(ClassLoader.getSystemResource(".")).getAbsolutePath();
 	}
 	
 	public static Config getDefaults() {

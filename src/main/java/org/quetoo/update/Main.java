@@ -5,14 +5,12 @@ import static org.quetoo.update.Config.getDefaults;
 import java.io.IOException;
 import java.util.Properties;
 
-import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Quetoo Update entry point.
@@ -21,8 +19,6 @@ import org.slf4j.LoggerFactory;
  */
 public class Main {
 	
-	private static final Logger log = LoggerFactory.getLogger(Main.class);
-
 	/**
 	 * Program entry point.
 	 * 
@@ -64,32 +60,21 @@ public class Main {
 		options.addOption(host);
 		options.addOption(dir);
 		options.addOption(prune);
-
-		final CommandLineParser parser = new DefaultParser();
+		
+		final Properties properties = new Properties();
 
 		try {
-			parser.parse(options, args);
+			final CommandLine commandLine = new DefaultParser().parse(options, args);
+			commandLine.iterator().forEachRemaining(opt -> {
+				if (commandLine.hasOption(opt.getOpt())) {
+					final String key = "quetoo.update." + opt.getLongOpt();
+					final String value = commandLine.getOptionValue(opt.getOpt());
+					properties.setProperty(key, value);
+				}
+			});
 		} catch (ParseException pe) {
 			new HelpFormatter().printHelp("quetoo-update", options);
 			System.exit(1);
-		}
-		
-		Properties properties = new Properties();
-		
-		if (arch.getValue() != null) {
-			properties.setProperty(Config.ARCH, arch.getValue());
-		}
-		
-		if (host.getValue() != null) {
-			properties.setProperty(Config.HOST, host.getValue());
-		}
-		
-		if (dir.getValue() != null) {
-			properties.setProperty(Config.DIR, dir.getValue());
-		}
-		
-		if (prune.getValue() != null) {
-			properties.setProperty(Config.PRUNE, prune.getValue());
 		}
 		
 		final Config config = new Config(properties);
@@ -97,7 +82,7 @@ public class Main {
 		try {
 			new Manager(config).sync();
 		} catch (IOException e) {
-			log.error(e.getMessage(), e);
+			e.printStackTrace(System.err);
 			System.exit(1);
 		}
 	}

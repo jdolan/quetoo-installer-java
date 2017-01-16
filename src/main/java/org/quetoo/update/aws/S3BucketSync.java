@@ -3,25 +3,17 @@ package org.quetoo.update.aws;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.InputStream;
 import java.util.function.Function;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.quetoo.update.Sync;
 
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.ListObjectsV2Request;
-import com.amazonaws.services.s3.model.ListObjectsV2Result;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.sun.istack.internal.NotNull;
-
 import io.reactivex.Observable;
 import io.reactivex.functions.Predicate;
-
 
 /**
  * Synchronizes a local file system destination with an S3 bucket.
@@ -35,18 +27,12 @@ public class S3BucketSync implements Sync {
 	 */
 	public static class Builder {
 
-		private AmazonS3Client amazonS3Client;
 		private CloseableHttpClient httpClient;
 		private String bucketName;
-		private Predicate<S3ObjectSummary> predicate;
-		private Function<S3ObjectSummary, File> mapper;
+		private Predicate<S3Object> predicate;
+		private Function<S3Object, File> mapper;
 		private File destination;
-
-		public Builder withAmazonS3Client(final AmazonS3Client amazonS3Client) {
-			this.amazonS3Client = amazonS3Client;
-			return this;
-		}
-
+		
 		public Builder withHttpClient(final CloseableHttpClient httpClient) {
 			this.httpClient = httpClient;
 			return this;
@@ -57,12 +43,12 @@ public class S3BucketSync implements Sync {
 			return this;
 		}
 		
-		public Builder withPredicate(final Predicate<S3ObjectSummary> predicate) {
+		public Builder withPredicate(final Predicate<S3Object> predicate) {
 			this.predicate = predicate;
 			return this;
 		}
 		
-		public Builder withMapper(final Function<S3ObjectSummary, File> mapper) {
+		public Builder withMapper(final Function<S3Object, File> mapper) {
 			this.mapper= mapper;
 			return this;
 		}
@@ -82,11 +68,10 @@ public class S3BucketSync implements Sync {
 		}
 	}
 
-	private final AmazonS3Client amazonS3Client;
 	private final CloseableHttpClient httpClient;
 	private final String bucketName;
-	private final Predicate<S3ObjectSummary> predicate;
-	private final Function<S3ObjectSummary, File> mapper;
+	private final Predicate<S3Object> predicate;
+	private final Function<S3Object, File> mapper;
 	private final File destination;
 
 	/**
@@ -94,21 +79,57 @@ public class S3BucketSync implements Sync {
 	 * 
 	 * @param builder The Builder.
 	 */
-	private S3BucketSync(@NotNull final Builder builder) {
+	private S3BucketSync(final Builder builder) {
 
-		this.amazonS3Client = builder.amazonS3Client;
-		this.httpClient = builder.httpClient;
-		this.bucketName = builder.bucketName;
-		this.predicate = builder.predicate;
-		this.mapper = builder.mapper;
-		this.destination = builder.destination;
+		httpClient = builder.httpClient;
+		bucketName = builder.bucketName;
+		predicate = builder.predicate;
+		mapper = builder.mapper;
+		destination = builder.destination;
+	}
+	
+	/**
+	 * A specialized ResponseHandler for conveniently dealing with response InputStreams.
+	 * 
+	 * @param <T> The parsed response object.
+	 */
+	private interface ResponseHandler<T> {
+		T handleResponse(final InputStream inputStream) throws IOException;
+	}
+	
+	/**
+	 * Executes an HTTP GET request for the specified path.
+	 * 
+	 * @param path The path.
+	 * @param handler The response handler.
+	 * 
+	 * @return The parsed response.
+	 * 
+	 * @throws IOException If an error occurs.
+	 */
+	private <T> T executeHttpRequest(final String path, ResponseHandler<T> handler) throws IOException {
+		
+		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + (path != null ? path : "");
+		
+		return httpClient.execute(new HttpGet(uri), res -> {
+			return handler.handleResponse(res.getEntity().getContent());
+		});
 	}
 
-	private File sync(final S3ObjectSummary summary) throws IOException {
+	/**
+	 * Syncs the specified {@link S3Object} to the configured destination.
+	 * 
+	 * @param obj The object to sync.
+	 * 
+	 * @return The resulting File.
+	 * 
+	 * @throws IOException If an error occurs.
+	 */
+	private File sync(final S3Object obj) throws IOException {
 
-		final boolean wantsDirectory = summary.getKey().endsWith("/");
+		final boolean wantsDirectory = obj.getKey().endsWith("/");
 
-		final File file = new File(destination, mapper.apply(summary).getPath());
+		final File file = new File(destination, mapper.apply(obj).getPath());
 		
 		if (file.exists()) {
 			final boolean isDirectory = file.isDirectory();
@@ -118,18 +139,16 @@ public class S3BucketSync implements Sync {
 			}
 		}
 						
-		if (!file.exists() || file.lastModified() < summary.getLastModified().getTime()) {
+		if (!file.exists() || file.lastModified() < obj.getLastModifiedTime()) {
 			
 			if (wantsDirectory) {
 				FileUtils.forceMkdir(file);
 			} else {
 				FileUtils.forceMkdirParent(file);
 				
-				final String uri = amazonS3Client.getUrl(bucketName, summary.getKey()).toString();
-
-				try (CloseableHttpResponse res = httpClient.execute(new HttpGet(uri))) {
-					res.getEntity().writeTo(new FileOutputStream(file));
-				}
+				executeHttpRequest(obj.getKey(), inputStream -> {
+					return IOUtils.copy(inputStream, new FileOutputStream(file));
+				});
 			}
 		}
 		
@@ -140,17 +159,9 @@ public class S3BucketSync implements Sync {
 	public Observable<File> sync() throws IOException {
 
 		FileUtils.forceMkdir(destination);
+		
+		final S3Bucket bucket = new S3Bucket(executeHttpRequest(null, S3::getDocument));
 
-		List<S3ObjectSummary> summaries = new ArrayList<>();
-
-		ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(bucketName);
-		ListObjectsV2Result res;
-		do {
-			res = amazonS3Client.listObjectsV2(req);
-			summaries.addAll(res.getObjectSummaries());
-			req.setContinuationToken(res.getContinuationToken());
-		} while (res.isTruncated());
-
-		return Observable.fromIterable(summaries).filter(predicate).map(this::sync);
+		return Observable.fromIterable(bucket).filter(predicate).map(this::sync);
 	}
 }

@@ -7,8 +7,6 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.quetoo.update.aws.S3BucketSync;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.reactivex.Observable;
 
@@ -22,9 +20,7 @@ public class Manager {
 	private final Config config;
 
 	private final Observable<Sync> syncs;
-	
-	private final Logger log = LoggerFactory.getLogger(getClass());
-	
+		
 	/**
 	 * Instantiates a {@link Manager} with the specified {@link Config}.
 	 * 
@@ -36,7 +32,6 @@ public class Manager {
 		syncs = Observable.fromArray(
 				
 			new S3BucketSync.Builder()
-				.withAmazonS3Client(config.getAmazonS3Client())
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo")
 				.withPredicate(s -> s.getKey().startsWith(config.getArchHostPrefix()))
@@ -45,7 +40,6 @@ public class Manager {
 				.build(),
 				
 			new S3BucketSync.Builder()
-				.withAmazonS3Client(config.getAmazonS3Client())
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo-data")
 				.withPredicate(s -> true)
@@ -53,24 +47,6 @@ public class Manager {
 				.withDestination(config.getShare())
 				.build()
 		);
-	}
-	
-	/**
-	 * Prunes the configured directory to mirror the aggregate sync result.
-	 * 
-	 * @param files The aggregate sync result.
-	 */
-	private void onComplete(Set<File> files) {
-		
-		if (config.getPrune()) {
-			FileUtils.listFiles(config.getDir(), null, true).stream().filter(f -> {;
-				return !files.contains(f);
-			}).forEach(f -> {
-				FileUtils.deleteQuietly(f);
-				
-				log.info("Removed {}", f);
-			});
-		}
 	}
 	
 	/**
@@ -86,18 +62,34 @@ public class Manager {
 			file.setExecutable(true);
 		}
 		
-		log.info("Updated {}", file);
-		
+		System.out.println("Updated " + file);
 		return file;
 	}
 	
 	/**
-	 * Logs the given error.
+	 * Prunes the configured directory to mirror the aggregate sync result.
+	 * 
+	 * @param files The aggregate sync result.
+	 */
+	private void onComplete(Set<File> files) {
+		
+		if (config.getPrune()) {
+			FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
+				return !files.contains(file);
+			}).forEach(file -> {
+				FileUtils.deleteQuietly(file);
+				System.out.println("Removed " + file);
+			});
+		}
+	}
+	
+	/**
+	 * Logs the specified error to `stderr`.
 	 * 
 	 * @param t The Throwable error.
 	 */
 	private void onError(final Throwable t) {
-		log.error(t.getMessage(), t);
+		t.printStackTrace(System.err);
 	}
 	
 	/**
