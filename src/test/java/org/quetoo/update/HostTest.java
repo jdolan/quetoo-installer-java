@@ -16,9 +16,10 @@ public class HostTest {
 	public void host() {
 		assertEquals(Host.apple_darwin, getHost("Mac OS X"));
 		assertEquals(Host.pc_linux, getHost("Linux"));
-		assertEquals(Host.w64_mingw32, getHost("Windows XP"));
-		assertEquals(Host.msvc, getHost("Windows 7"));
-		assertEquals(Host.msvc, getHost("Windows 8"));
-		assertEquals(Host.msvc, getHost("Windows 10"));
+		assertEquals(Host.pc_windows, getHost("Windows XP"));
+		assertEquals(Host.pc_windows, getHost("Windows 7"));
+		assertEquals(Host.pc_windows, getHost("Windows 8"));
+		assertEquals(Host.pc_windows, getHost("Windows 10"));
+		assertEquals(Host.w64_mingw32, getHost("mingw"));
 	}
 }

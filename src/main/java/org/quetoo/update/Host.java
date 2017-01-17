@@ -9,7 +9,7 @@ import org.apache.commons.lang3.StringUtils;
  */
 public enum Host {
 
-	unknown, apple_darwin, pc_linux, w64_mingw32, msvc;
+	unknown, apple_darwin, pc_linux, pc_windows, w64_mingw32;
 
 	@Override
 	public String toString() {
@@ -30,14 +30,14 @@ public enum Host {
 			return pc_linux;
 		}
 
-		if (StringUtils.containsIgnoreCase(string, "windows xp")) {
+		if (StringUtils.containsIgnoreCase(string, "windows")) {
+			return pc_windows;
+		}
+
+		if (StringUtils.containsIgnoreCase(string, "mingw")) {
 			return w64_mingw32;
 		}
 
-		if (StringUtils.containsIgnoreCase(string, "windows")) {
-			return msvc;
-		}
-
 		return unknown;
-	}	
+	}
 }
