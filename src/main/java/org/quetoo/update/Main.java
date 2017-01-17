@@ -18,7 +18,7 @@ import org.apache.commons.cli.ParseException;
  * @author jdolan
  */
 public class Main {
-	
+
 	/**
 	 * Program entry point.
 	 * 
@@ -49,9 +49,12 @@ public class Main {
 
 		final Option prune = Option.builder("p")
 				.longOpt("prune")
-				.hasArg()
-				.argName(getDefaults().getPrune().toString())
 				.desc("prune unknown files")
+				.build();
+		
+		final Option ui = Option.builder("u")
+				.longOpt("ui")
+				.desc("create a user interface")
 				.build();
 
 		final Options options = new Options();
@@ -60,6 +63,7 @@ public class Main {
 		options.addOption(host);
 		options.addOption(dir);
 		options.addOption(prune);
+		options.addOption(ui);
 		
 		final Properties properties = new Properties();
 
@@ -67,8 +71,12 @@ public class Main {
 			final CommandLine commandLine = new DefaultParser().parse(options, args);
 			commandLine.iterator().forEachRemaining(opt -> {
 				if (commandLine.hasOption(opt.getOpt())) {
-					final String key = "quetoo.update." + opt.getLongOpt();
-					final String value = commandLine.getOptionValue(opt.getOpt());
+					final String value, key = "quetoo.update." + opt.getLongOpt();
+					if (opt.hasArg()) {
+						value = commandLine.getOptionValue(opt.getOpt());
+					} else {
+						value = "true";
+					}
 					properties.setProperty(key, value);
 				}
 			});
@@ -76,11 +84,15 @@ public class Main {
 			new HelpFormatter().printHelp("quetoo-update", options);
 			System.exit(1);
 		}
-		
+
 		final Config config = new Config(properties);
-		
+
 		try {
-			new Manager(config).sync();
+			if (config.getUi()) {
+				new Frame(config);
+			} else {
+				new Manager(config).sync();
+			}
 		} catch (IOException e) {
 			e.printStackTrace(System.err);
 			System.exit(1);

@@ -86,22 +86,27 @@ public class Manager {
 	/**
 	 * Logs the specified error to `stderr`.
 	 * 
-	 * @param t The Throwable error.
+	 * @param throwable The Throwable error.
 	 */
-	private void onError(final Throwable t) {
-		t.printStackTrace(System.err);
+	private void onError(final Throwable throwable) {
+		throwable.printStackTrace(System.err);
 	}
 	
 	/**
 	 * Dispatches the configured {@link Sync}s.
 	 * 
+	 * @return An Observable of the merged {@link Sync} result.
+	 * 
 	 * @throws IOException If an error occurs.
 	 */
-	public void sync() throws IOException {
-		
-		Observable.merge(syncs.map(Sync::sync))
-			.map(this::onSync)
-			.collectInto(new HashSet<File>(), (set, file) -> set.add(file))
-			.subscribe(this::onComplete, this::onError);		
+	public Observable<File> sync() throws IOException {
+
+		Observable<File> files = Observable.merge(syncs.map(Sync::sync)).map(this::onSync);
+
+		files.doOnError(this::onError);
+
+		files.collectInto(new HashSet<File>(), (set, file) -> set.add(file)).subscribe(this::onComplete);
+
+		return files;
 	}
 }
