@@ -113,12 +113,21 @@ public class Manager {
 	 */
 	public Observable<File> sync() throws IOException {
 
-		Observable<File> files = Observable.merge(syncs.map(Sync::sync)).map(this::onSync);
+		Observable<File> files = Observable.merge(syncs.map(Sync::sync))
+										   .map(this::onSync)
+										   .share();
 
 		files.doOnError(this::onError);
 
 		files.collectInto(new HashSet<File>(), (set, file) -> set.add(file)).subscribe(this::onComplete);
 
 		return files;
+	}
+	
+	/**
+	 * @return This Manager's {@link Config}.
+	 */
+	public Config getConfig() {
+		return config;
 	}
 }

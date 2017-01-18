@@ -120,6 +120,17 @@ public class S3BucketSync implements Sync {
 			return handler.handleResponse(res.getEntity().getContent());
 		});
 	}
+	
+	/**
+	 * Reads the remote bucket listing, returning the {@link S3Bucket}.
+	 * 
+	 * @return The {@link S3Bucket}.
+	 * 
+	 * @throws IOException If an error occurs.
+	 */
+	private S3Bucket read() throws IOException {
+		return new S3Bucket(executeHttpRequest(null, S3::getDocument));
+	}
 
 	/**
 	 * Syncs the specified {@link S3Object} to the configured destination.
@@ -185,10 +196,9 @@ public class S3BucketSync implements Sync {
 	public Observable<File> sync() throws IOException {
 		
 		FileUtils.forceMkdir(destination);
-				
-		final S3Bucket bucket = new S3Bucket(executeHttpRequest(null, S3::getDocument));
 
-		return Observable.fromIterable(bucket)
+		return Observable.fromCallable(this::read)
+						 .flatMap(Observable::fromIterable)
 						 .subscribeOn(Schedulers.newThread())
 						 .filter(predicate)
 						 .map(this::sync)

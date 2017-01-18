@@ -1,8 +1,7 @@
 package org.quetoo.update;
 
-import java.io.IOException;
-
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 /**
  * The top level container for the user interface.
@@ -17,7 +16,8 @@ public class Frame extends JFrame {
 	private final Panel panel;
 
 	/**
-	 * Instantiates a {@link Frame} with the specified {@link Config}.
+	 * Instantiates a {@link Frame} with the specified {@link Config}, and dispatches a
+	 * {@link Manager} to initiate the sync process.
 	 * 
 	 * @param config The Config.
 	 */
@@ -25,8 +25,10 @@ public class Frame extends JFrame {
 		super(Config.NAME + " " + Config.VERSION);
 
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		
+		manager = new Manager(config);
 
-		panel = new Panel(config);
+		panel = new Panel(manager);
 
 		setContentPane(panel);
 
@@ -34,12 +36,6 @@ public class Frame extends JFrame {
 		setLocationRelativeTo(null);
 		setVisible(true);
 
-		manager = new Manager(config);
-
-		try {
-			manager.sync().subscribe(panel::onSync, panel::onError, panel::onComplete);
-		} catch (IOException ioe) {
-
-		}
+		SwingUtilities.invokeLater(panel::sync);
 	}
 }
