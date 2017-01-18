@@ -14,6 +14,7 @@ import org.quetoo.update.Sync;
 
 import io.reactivex.Observable;
 import io.reactivex.functions.Predicate;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * Synchronizes a local file system destination with an S3 bucket.
@@ -67,12 +68,15 @@ public class S3BucketSync implements Sync {
 			return new S3BucketSync(this);
 		}
 	}
+	
+	private static final File CANCELLED = new File("");
 
 	private final CloseableHttpClient httpClient;
 	private final String bucketName;
 	private final Predicate<S3Object> predicate;
 	private final Function<S3Object, File> mapper;
 	private final File destination;
+	private Boolean isCancelled;
 
 	/**
 	 * Instantiates an {@link S3BucketSync} with the given Builder.
@@ -86,6 +90,7 @@ public class S3BucketSync implements Sync {
 		predicate = builder.predicate;
 		mapper = builder.mapper;
 		destination = builder.destination;
+		isCancelled = false;
 	}
 	
 	/**
@@ -126,42 +131,67 @@ public class S3BucketSync implements Sync {
 	 * @throws IOException If an error occurs.
 	 */
 	private File sync(final S3Object obj) throws IOException {
-
-		final boolean wantsDirectory = obj.getKey().endsWith("/");
-
-		final File file = new File(destination, mapper.apply(obj).getPath());
 		
-		if (file.exists()) {
-			final boolean isDirectory = file.isDirectory();
+		final File file;
+		
+		if (isCancelled == false) {
 			
-			if (isDirectory != wantsDirectory) {
-				FileUtils.deleteQuietly(file);
-			}
-		}
-						
-		if (!file.exists() || file.lastModified() < obj.getLastModifiedTime()) {
+			file = new File(destination, mapper.apply(obj).getPath());
 			
-			if (wantsDirectory) {
-				FileUtils.forceMkdir(file);
-			} else {
-				FileUtils.forceMkdirParent(file);
+			final boolean wantsDirectory = obj.getKey().endsWith("/");
+	
+			if (file.exists()) {
+				final boolean isDirectory = file.isDirectory();
 				
-				executeHttpRequest(obj.getKey(), inputStream -> {
-					return IOUtils.copy(inputStream, new FileOutputStream(file));
-				});
+				if (isDirectory != wantsDirectory) {
+					FileUtils.deleteQuietly(file);
+				}
 			}
+							
+			if (!file.exists() || file.lastModified() < obj.getLastModifiedTime()) {
+				
+				if (wantsDirectory) {
+					FileUtils.forceMkdir(file);
+				} else {
+					FileUtils.forceMkdirParent(file);
+					
+					executeHttpRequest(obj.getKey(), inputStream -> {
+						return IOUtils.copy(inputStream, new FileOutputStream(file));
+					});
+				}
+			}
+		} else {
+			file = CANCELLED;
 		}
 		
 		return file;
 	}
+	
+	/**
+	 * @param file A recently synced file.
+	 * 
+	 * @return True if the file was successfully synced, false otherwise.
+	 */
+	private Boolean wasSuccessful(final File file) {
+		return file != CANCELLED && file.exists();
+	}
+	
+	@Override
+	public void cancel() {
+		isCancelled = true;
+	}
 
 	@Override
 	public Observable<File> sync() throws IOException {
-
-		FileUtils.forceMkdir(destination);
 		
+		FileUtils.forceMkdir(destination);
+				
 		final S3Bucket bucket = new S3Bucket(executeHttpRequest(null, S3::getDocument));
 
-		return Observable.fromIterable(bucket).filter(predicate).map(this::sync);
+		return Observable.fromIterable(bucket)
+						 .subscribeOn(Schedulers.newThread())
+						 .filter(predicate)
+						 .map(this::sync)
+						 .filter(this::wasSuccessful);
 	}
 }
