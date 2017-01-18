@@ -43,7 +43,7 @@ public class Panel extends JPanel {
 	 */
 	public Panel(final Manager manager) {
 
-		super(new BorderLayout(), true);
+		super(new BorderLayout(0, 5), true);
 
 		this.manager = manager;
 
@@ -65,7 +65,7 @@ public class Panel extends JPanel {
 		{
 			JPanel panel = new JPanel();
 
-			panel.setLayout(new BorderLayout());
+			panel.setLayout(new BorderLayout(0, 5));
 
 			panel.add(status, BorderLayout.NORTH);
 			panel.add(progressBar, BorderLayout.SOUTH);
@@ -78,7 +78,7 @@ public class Panel extends JPanel {
 		add(new JScrollPane(summary), BorderLayout.CENTER);
 
 		{
-			JPanel panel = new JPanel(new BorderLayout());
+			JPanel panel = new JPanel(new BorderLayout(0, 5));
 			
 			copySummary = new JButton("Copy Summary");
 			copySummary.addActionListener(this::onCopySummary);

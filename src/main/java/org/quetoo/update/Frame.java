@@ -2,6 +2,7 @@ package org.quetoo.update;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 /**
  * The top level container for the user interface.
@@ -14,6 +15,14 @@ public class Frame extends JFrame {
 
 	private final Manager manager;
 	private final Panel panel;
+
+	static {
+		try {
+			UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+		} catch (Throwable t) {
+			t.printStackTrace();
+		}
+	}
 
 	/**
 	 * Instantiates a {@link Frame} with the specified {@link Config}, and dispatches a
