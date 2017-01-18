@@ -52,8 +52,8 @@ public class Main {
 				.desc("prune unknown files")
 				.build();
 		
-		final Option ui = Option.builder("u")
-				.longOpt("ui")
+		final Option gui = Option.builder("g")
+				.longOpt("gui")
 				.desc("create a user interface")
 				.build();
 
@@ -63,7 +63,7 @@ public class Main {
 		options.addOption(host);
 		options.addOption(dir);
 		options.addOption(prune);
-		options.addOption(ui);
+		options.addOption(gui);
 		
 		final Properties properties = new Properties();
 
@@ -88,7 +88,7 @@ public class Main {
 		final Config config = new Config(properties);
 
 		try {
-			if (config.getUi()) {
+			if (config.getGui()) {
 				new Frame(config);
 			} else {
 				new Manager(config).sync();
