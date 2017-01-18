@@ -37,9 +37,9 @@ public class Panel extends JPanel {
 	private final JButton cancel;
 
 	/**
-	 * Instantiates a {@link Panel} with the specified {@link Config}.
+	 * Instantiates a {@link Panel} with the specified {@link Manager}.
 	 * 
-	 * @param config The Config.
+	 * @param manager The Manager.
 	 */
 	public Panel(final Manager manager) {
 
@@ -56,8 +56,9 @@ public class Panel extends JPanel {
 		summary = new JTextArea(10, 40);
 		summary.setMargin(new Insets(5, 5, 5, 5));
 		summary.setEditable(false);
-		
-		summary.append("Retrieving objects list for " + manager.getConfig().getArchHostPrefix() + "..\n");
+
+		final String prefix = manager.getConfig().getArchHostPrefix();
+		summary.append("Retrieving objects list for " + prefix + "..\n");
 
 		DefaultCaret caret = (DefaultCaret) summary.getCaret();
 		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
@@ -79,10 +80,10 @@ public class Panel extends JPanel {
 
 		{
 			JPanel panel = new JPanel(new BorderLayout(0, 5));
-			
+
 			copySummary = new JButton("Copy Summary");
 			copySummary.addActionListener(this::onCopySummary);
-			
+
 			cancel = new JButton("Cancel");
 			cancel.addActionListener(this::onCancel);
 
@@ -95,7 +96,7 @@ public class Panel extends JPanel {
 
 		setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 	}
-	
+
 	/**
 	 * Dispatches {@link Manager#sync()}.
 	 */
@@ -106,14 +107,14 @@ public class Panel extends JPanel {
 			onError(ioe);
 		}
 	}
-	
+
 	/**
 	 * Sets the status to `string` and appends `string` to the summary.
 	 * 
 	 * @param string The String to log.
 	 */
 	private void setStatus(final String string) {
-		
+
 		status.setText(string);
 		summary.append(string + "\n");
 	}
@@ -144,7 +145,7 @@ public class Panel extends JPanel {
 
 		final StringWriter stackTrace = new StringWriter();
 		throwable.printStackTrace(new PrintWriter(stackTrace));
-		
+
 		summary.append(stackTrace.toString());
 	}
 
@@ -152,11 +153,11 @@ public class Panel extends JPanel {
 	 * Updates the interface components to reflect completion.
 	 */
 	private void onComplete() {
-		setStatus("Complete");
+		setStatus("Update complete");
 		progressBar.setValue(progressBar.getMaximum());
 		cancel.setEnabled(false);
 	}
-	
+
 	/**
 	 * Copies the contents of `summary` to the clipboard.
 	 */
@@ -164,7 +165,7 @@ public class Panel extends JPanel {
 		final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 		clipboard.setContents(new StringSelection(summary.getText()), null);
 	}
-	
+
 	/**
 	 * Cancels the sync operation.
 	 */

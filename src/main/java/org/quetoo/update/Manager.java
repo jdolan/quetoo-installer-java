@@ -2,8 +2,7 @@ package org.quetoo.update;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.quetoo.update.aws.S3BucketSync;
@@ -55,16 +54,14 @@ public class Manager {
 	 * Modifies permissions on the newly synced File.
 	 * 
 	 * @param file The newly synced File.
-	 * 
 	 * @return The File.
 	 */
 	private File onSync(final File file) {
-		
+
 		if (file.getParentFile().equals(config.getBin())) {
 			file.setExecutable(true);
 		}
 		
-		System.out.println("Updated " + file);
 		return file;
 	}
 	
@@ -73,27 +70,16 @@ public class Manager {
 	 * 
 	 * @param files The aggregate sync result.
 	 */
-	private void onComplete(Set<File> files) {
+	private void prune(List<File> files) {
 		
 		if (config.getPrune() && !isCancelled) {
 			FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
 				return !files.contains(file);
 			}).forEach(file -> {
 				FileUtils.deleteQuietly(file);
-				System.out.println("Removed " + file);
+				System.out.println("Pruned " + file);
 			});
-		}
-		
-		System.out.println("Complete");
-	}
-	
-	/**
-	 * Logs the specified error to `stderr`.
-	 * 
-	 * @param throwable The Throwable error.
-	 */
-	private void onError(final Throwable throwable) {
-		throwable.printStackTrace(System.err);
+		}		
 	}
 	
 	/**
@@ -108,7 +94,6 @@ public class Manager {
 	 * Dispatches the configured {@link Sync}s.
 	 * 
 	 * @return An Observable of the merged {@link Sync} result.
-	 * 
 	 * @throws IOException If an error occurs.
 	 */
 	public Observable<File> sync() throws IOException {
@@ -117,9 +102,7 @@ public class Manager {
 										   .map(this::onSync)
 										   .share();
 
-		files.doOnError(this::onError);
-
-		files.collectInto(new HashSet<File>(), (set, file) -> set.add(file)).subscribe(this::onComplete);
+		files.toList().subscribe(this::prune);
 
 		return files;
 	}

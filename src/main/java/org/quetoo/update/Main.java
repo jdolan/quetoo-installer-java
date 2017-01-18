@@ -2,7 +2,6 @@ package org.quetoo.update;
 
 import static org.quetoo.update.Config.getDefaults;
 
-import java.io.IOException;
 import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
@@ -51,7 +50,7 @@ public class Main {
 				.longOpt("prune")
 				.desc("prune unknown files")
 				.build();
-		
+
 		final Option gui = Option.builder("g")
 				.longOpt("gui")
 				.desc("create a user interface")
@@ -64,7 +63,7 @@ public class Main {
 		options.addOption(dir);
 		options.addOption(prune);
 		options.addOption(gui);
-		
+
 		final Properties properties = new Properties();
 
 		try {
@@ -87,15 +86,10 @@ public class Main {
 
 		final Config config = new Config(properties);
 
-		try {
-			if (config.getGui()) {
-				new Frame(config);
-			} else {
-				new Manager(config).sync();
-			}
-		} catch (IOException e) {
-			e.printStackTrace(System.err);
-			System.exit(1);
+		if (config.getGui()) {
+			new Frame(new Manager(config));
+		} else {
+			new Console(new Manager(config));
 		}
 	}
 }
