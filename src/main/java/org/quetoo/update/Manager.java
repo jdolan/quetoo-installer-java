@@ -20,6 +20,8 @@ public class Manager {
 	private final Config config;
 
 	private final Observable<Sync> syncs;
+	
+	private Boolean isCancelled;
 		
 	/**
 	 * Instantiates a {@link Manager} with the specified {@link Config}.
@@ -73,7 +75,7 @@ public class Manager {
 	 */
 	private void onComplete(Set<File> files) {
 		
-		if (config.getPrune()) {
+		if (config.getPrune() && !isCancelled) {
 			FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
 				return !files.contains(file);
 			}).forEach(file -> {
@@ -81,6 +83,8 @@ public class Manager {
 				System.out.println("Removed " + file);
 			});
 		}
+		
+		System.out.println("Complete");
 	}
 	
 	/**
@@ -90,6 +94,14 @@ public class Manager {
 	 */
 	private void onError(final Throwable throwable) {
 		throwable.printStackTrace(System.err);
+	}
+	
+	/**
+	 * Cancels all pending sync operations.
+	 */
+	public void cancel() {
+		isCancelled = true;
+		syncs.forEach(Sync::cancel);
 	}
 	
 	/**
