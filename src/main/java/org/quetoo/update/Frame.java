@@ -4,6 +4,8 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
+import org.apache.commons.lang3.SystemUtils;
+
 /**
  * The top level container for the user interface.
  * 
@@ -17,10 +19,12 @@ public class Frame extends JFrame {
 	private final Panel panel;
 
 	static {
-		try {
-			UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-		} catch (Throwable t) {
-			t.printStackTrace();
+		if (SystemUtils.IS_OS_MAC_OSX) {
+			try {
+				UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+			} catch (Throwable t) {
+				t.printStackTrace();
+			}
 		}
 	}
 
