@@ -35,7 +35,7 @@ public class S3Bucket implements Iterable<S3Object> {
 		final Stream<Node> contents = getChildNodes(doc.getDocumentElement(), CONTENTS);
 		objects = contents.map(S3Object::new).collect(Collectors.toList());
 	}
-	
+
 	@Override
 	public Iterator<S3Object> iterator() {
 		return objects.iterator();

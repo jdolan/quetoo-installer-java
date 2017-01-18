@@ -29,7 +29,7 @@ public class S3Object {
 		key = getString(node, KEY);
 		lastModified = getInstant(node, LAST_MODIFIED);
 	}
-	
+
 	public String getKey() {
 		return key;
 	}
@@ -37,8 +37,8 @@ public class S3Object {
 	public Instant getLastModified() {
 		return lastModified;
 	}
-	
+
 	public long getLastModifiedTime() {
 		return lastModified.toEpochMilli();
-	}	
+	}
 }

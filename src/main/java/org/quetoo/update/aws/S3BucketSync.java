@@ -33,7 +33,7 @@ public class S3BucketSync implements Sync {
 		private Predicate<S3Object> predicate;
 		private Function<S3Object, File> mapper;
 		private File destination;
-		
+
 		public Builder withHttpClient(final CloseableHttpClient httpClient) {
 			this.httpClient = httpClient;
 			return this;
@@ -43,14 +43,14 @@ public class S3BucketSync implements Sync {
 			this.bucketName = bucketName;
 			return this;
 		}
-		
+
 		public Builder withPredicate(final Predicate<S3Object> predicate) {
 			this.predicate = predicate;
 			return this;
 		}
-		
+
 		public Builder withMapper(final Function<S3Object, File> mapper) {
-			this.mapper= mapper;
+			this.mapper = mapper;
 			return this;
 		}
 
@@ -68,7 +68,7 @@ public class S3BucketSync implements Sync {
 			return new S3BucketSync(this);
 		}
 	}
-	
+
 	private static final File CANCELLED = new File("");
 
 	private final CloseableHttpClient httpClient;
@@ -92,7 +92,7 @@ public class S3BucketSync implements Sync {
 		destination = builder.destination;
 		isCancelled = false;
 	}
-	
+
 	/**
 	 * A specialized ResponseHandler for conveniently dealing with response InputStreams.
 	 * 
@@ -101,71 +101,66 @@ public class S3BucketSync implements Sync {
 	private interface ResponseHandler<T> {
 		T handleResponse(final InputStream inputStream) throws IOException;
 	}
-	
+
 	/**
 	 * Executes an HTTP GET request for the specified path.
 	 * 
 	 * @param path The path.
 	 * @param handler The response handler.
-	 * 
 	 * @return The parsed response.
-	 * 
 	 * @throws IOException If an error occurs.
 	 */
 	private <T> T executeHttpRequest(final String path, ResponseHandler<T> handler) throws IOException {
-		
-		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + (path != null ? path : "");
-		
+
+		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + path;
+
 		return httpClient.execute(new HttpGet(uri), res -> {
 			return handler.handleResponse(res.getEntity().getContent());
 		});
 	}
-	
+
 	/**
 	 * Reads the remote bucket listing, returning the {@link S3Bucket}.
 	 * 
 	 * @return The {@link S3Bucket}.
-	 * 
 	 * @throws IOException If an error occurs.
 	 */
 	private S3Bucket read() throws IOException {
-		return new S3Bucket(executeHttpRequest(null, S3::getDocument));
+		return new S3Bucket(executeHttpRequest("", S3::getDocument));
 	}
 
 	/**
 	 * Syncs the specified {@link S3Object} to the configured destination.
 	 * 
 	 * @param obj The object to sync.
-	 * 
 	 * @return The resulting File.
-	 * 
 	 * @throws IOException If an error occurs.
 	 */
 	private File sync(final S3Object obj) throws IOException {
-		
+
 		final File file;
-		
+
 		if (isCancelled == false) {
-			
+
 			file = new File(destination, mapper.apply(obj).getPath());
-			
+
 			final boolean wantsDirectory = obj.getKey().endsWith("/");
-	
+
 			if (file.exists()) {
 				final boolean isDirectory = file.isDirectory();
-				
+
 				if (isDirectory != wantsDirectory) {
 					FileUtils.deleteQuietly(file);
 				}
 			}
-							
+
 			if (!file.exists() || file.lastModified() < obj.getLastModifiedTime()) {
-				
+
 				if (wantsDirectory) {
 					FileUtils.forceMkdir(file);
 				} else {
 					FileUtils.forceMkdirParent(file);
-					
+
 					executeHttpRequest(obj.getKey(), inputStream -> {
 						return IOUtils.copy(inputStream, new FileOutputStream(file));
 					});
@@ -174,19 +169,18 @@ public class S3BucketSync implements Sync {
 		} else {
 			file = CANCELLED;
 		}
-		
+
 		return file;
 	}
-	
+
 	/**
 	 * @param file A recently synced file.
-	 * 
 	 * @return True if the file was successfully synced, false otherwise.
 	 */
 	private Boolean wasSuccessful(final File file) {
 		return file != CANCELLED && file.exists();
 	}
-	
+
 	@Override
 	public void cancel() {
 		isCancelled = true;
