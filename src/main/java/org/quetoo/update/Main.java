@@ -93,11 +93,9 @@ public class Main {
 		
 		final File executable = config.getExecutable();
 		
-		if (executable.getParentFile().equals(config.getUpdateBin())) {
-						
+		if (executable.getParentFile().equals(config.getUpdateBin())) {			
 			try {
 				final File tempFile = File.createTempFile("quetoo-update", ".jar");
-				
 				FileUtils.copyFile(executable, tempFile);
 
 				final String[] command = ArrayUtils.addAll( new String[] { 
@@ -105,7 +103,6 @@ public class Main {
 				}, args);
 
 				new ProcessBuilder().inheritIO().command(command).start();				
-				
 			} catch (IOException ioe) {
 				ioe.printStackTrace(System.err);
 				System.exit(2);
