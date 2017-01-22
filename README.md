@@ -10,5 +10,13 @@
 
 This repository provides a Java-based update utility for [_Quetoo_](https://github.com/jdolan/quetoo).
 
+## Compiling
+
+This project builds with [Maven3](https://maven.apache.org/):
+
+    mvn package [-DskipTests]
+
+The resulting minified _uber_ `.jar` is created by the [Shade](https://maven.apache.org/plugins/maven-shade-plugin/) and [Proguard](https://github.com/wvengen/proguard-maven-plugin) Maven plugins.
+
 ## Support
  * The IRC channel for this project is *#quetoo* on *irc.freenode.net*
