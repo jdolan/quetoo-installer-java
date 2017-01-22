@@ -74,25 +74,25 @@ public class Config {
 	public File getDir() {
 		return dir;
 	}
-	
+
 	public File getBin() {
 		switch (getHost()) {
-			case apple_darwin:
-				return new File(getDir(), "Quetoo.app/Contents/MacOS");
-			default:
-				return new File(getDir(), "bin");
+		case apple_darwin:
+			return new File(getDir(), "Quetoo.app/Contents/MacOS");
+		default:
+			return new File(getDir(), "bin");
 		}
 	}
-	
+
 	public File getEtc() {
 		switch (getHost()) {
-			case apple_darwin:
-				return new File(getDir(), "Quetoo.app/Contents/MacOS/etc");
-			default:
-				return new File(getDir(), "etc");
+		case apple_darwin:
+			return new File(getDir(), "Quetoo.app/Contents/MacOS/etc");
+		default:
+			return new File(getDir(), "etc");
 		}
 	}
-	
+
 	public File getLib() {
 		switch (getHost()) {
 		case apple_darwin:
@@ -101,14 +101,27 @@ public class Config {
 			return new File(getDir(), "lib");
 		}
 	}
-	
+
 	public File getShare() {
 		switch (getHost()) {
-			case apple_darwin:
-				return new File(getDir(), "Quetoo.app/Contents/Resources");
-			default:
-				return new File(getDir(), "share");
+		case apple_darwin:
+			return new File(getDir(), "Quetoo.app/Contents/Resources");
+		default:
+			return new File(getDir(), "share");
 		}
+	}
+
+	public File getUpdateBin() {
+		switch (getHost()) {
+		case apple_darwin:
+			return new File(getDir(), "Update.app/Contents/MacOS");
+		default:
+			return getBin();
+		}
+	}
+	
+	public File getExecutable() {
+		return new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
 	}
 	
 	public Boolean getPrune() {

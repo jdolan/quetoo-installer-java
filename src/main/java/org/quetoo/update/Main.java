@@ -2,6 +2,8 @@ package org.quetoo.update;
 
 import static org.quetoo.update.Config.getDefaults;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
@@ -10,6 +12,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.SystemUtils;
 
 /**
  * Quetoo Update entry point.
@@ -17,7 +22,7 @@ import org.apache.commons.cli.ParseException;
  * @author jdolan
  */
 public class Main {
-
+	
 	/**
 	 * Program entry point.
 	 * 
@@ -85,7 +90,30 @@ public class Main {
 		}
 
 		final Config config = new Config(properties);
+		
+		final File executable = config.getExecutable();
+		
+		if (executable.getParentFile().equals(config.getUpdateBin())) {
+						
+			try {
+				final File tempFile = File.createTempFile("quetoo-update", ".jar");
+				
+				FileUtils.copyFile(executable, tempFile);
 
+				final String[] command = ArrayUtils.addAll( new String[] { 
+						SystemUtils.JAVA_HOME + "/bin/java", "-jar", tempFile.getAbsolutePath()
+				}, args);
+
+				new ProcessBuilder().inheritIO().command(command).start();				
+				
+			} catch (IOException ioe) {
+				ioe.printStackTrace(System.err);
+				System.exit(2);
+			}
+			
+			System.exit(0);
+		}
+		
 		if (config.getConsole()) {
 			new Console(new Manager(config));
 		} else {
