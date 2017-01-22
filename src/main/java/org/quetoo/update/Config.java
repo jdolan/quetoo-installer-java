@@ -21,7 +21,7 @@ public class Config {
 	public static final String HOST = "quetoo.update.host";
 	public static final String DIR = "quetoo.update.dir";
 	public static final String PRUNE = "quetoo.update.prune";
-	public static final String GUI = "quetoo.update.gui";
+	public static final String CONSOLE = "quetoo.update.console";
 	
 	private static final Config defaults = new Config();
 
@@ -30,7 +30,7 @@ public class Config {
 	private final Host host;
 	private final File dir;
 	private final Boolean prune;
-	private final Boolean gui;
+	private final Boolean console;
 
 	/**
 	 * Default constructor.
@@ -52,7 +52,7 @@ public class Config {
 		host = Host.getHost(properties.getProperty(HOST, SystemUtils.OS_NAME));
 		dir = new File(properties.getProperty(DIR, SystemUtils.USER_DIR));
 		prune = Boolean.parseBoolean(properties.getProperty(PRUNE, "false"));
-		gui = Boolean.parseBoolean(properties.getProperty(GUI, "false"));
+		console = Boolean.parseBoolean(properties.getProperty(CONSOLE, "false"));
 	}
 
 	public CloseableHttpClient getHttpClient() {
@@ -115,8 +115,8 @@ public class Config {
 		return prune;
 	}
 	
-	public Boolean getGui() {
-		return gui;
+	public Boolean getConsole() {
+		return console;
 	}
 	
 	public static Config getDefaults() {
