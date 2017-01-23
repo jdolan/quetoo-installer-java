@@ -91,12 +91,10 @@ public class Main {
 
 		final Config config = new Config(properties);
 		
-		final File executable = config.getExecutable();
-		
-		if (executable.getParentFile().equals(config.getUpdateBin())) {			
+		if (config.shouldRelaunch()) {			
 			try {
 				final File tempFile = File.createTempFile("quetoo-update", ".jar");
-				FileUtils.copyFile(executable, tempFile);
+				FileUtils.copyFile(config.getJar(), tempFile);
 
 				final String[] command = ArrayUtils.addAll( new String[] { 
 						SystemUtils.JAVA_HOME + "/bin/java", "-jar", tempFile.getAbsolutePath()

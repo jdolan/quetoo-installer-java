@@ -1,6 +1,7 @@
 package org.quetoo.update;
 
 import java.io.File;
+import java.security.CodeSource;
 import java.util.Properties;
 
 import org.apache.commons.lang3.SystemUtils;
@@ -13,18 +14,20 @@ import org.apache.http.impl.client.HttpClients;
  * @author jdolan
  */
 public class Config {
-	
+
 	public static final String NAME = "Quetoo Update";
 	public static final String VERSION = "1.0-SNAPSHOT";
-	
+
 	public static final String ARCH = "quetoo.update.arch";
 	public static final String HOST = "quetoo.update.host";
 	public static final String DIR = "quetoo.update.dir";
 	public static final String PRUNE = "quetoo.update.prune";
 	public static final String CONSOLE = "quetoo.update.console";
-	
+
 	private static final Config defaults = new Config();
 
+	private final CodeSource codeSource;
+	private final File jar;
 	private final CloseableHttpClient httpClient;
 	private final Arch arch;
 	private final Host host;
@@ -38,21 +41,83 @@ public class Config {
 	public Config() {
 		this(new Properties(System.getProperties()));
 	}
-	
+
 	/**
 	 * Instantiates a Config with the specified Properties.
 	 * 
 	 * @param properties The Properties to initialize with.
 	 */
 	public Config(final Properties properties) {
-		
+
 		httpClient = HttpClients.createDefault();
-		
+
+		codeSource = getClass().getProtectionDomain().getCodeSource();
+		jar = new File(codeSource.getLocation().getPath());
+
 		arch = Arch.getArch(properties.getProperty(ARCH, SystemUtils.OS_ARCH));
 		host = Host.getHost(properties.getProperty(HOST, SystemUtils.OS_NAME));
-		dir = new File(properties.getProperty(DIR, SystemUtils.USER_DIR));
+
+		if (properties.getProperty(DIR) != null) {
+			dir = new File(properties.getProperty(DIR));
+		} else {
+			dir = resolveDir();
+		}
+
 		prune = Boolean.parseBoolean(properties.getProperty(PRUNE, "false"));
 		console = Boolean.parseBoolean(properties.getProperty(CONSOLE, "false"));
+	}
+	
+	/**
+	 * @return The most appropriate default destination directory.
+	 */
+	private File resolveDir() {
+		
+		if (jar != null) {
+			final String path = jar.getAbsolutePath();
+			switch (host) {
+				case apple_darwin:
+					if (path.contains("Quetoo.app")) {
+						return new File(path.replaceFirst("Quetoo\\.app.*", ""));
+					}
+					break;
+				case pc_windows:
+				case w64_mingw32:
+					if (path.contains("\\bin\\")) {
+						return new File(path.replaceFirst("\\bin\\.*", ""));
+					}
+					break;
+				case pc_linux:
+				case unknown:
+					if (path.contains("/bin/")) {
+						return new File(path.replaceFirst("/bin/.*", ""));
+					}
+					break;
+			}
+		}
+		
+		return new File(SystemUtils.USER_DIR);
+	}
+	
+	/**
+	 * @return True if the executable jar resides within the destination directory.
+	 */
+	public Boolean shouldRelaunch() {
+		File file = getJar(), lib = getLib();
+		while (file != null) {
+			if (file.equals(lib)) {
+				return true;
+			}
+			file = file.getParentFile();
+		}
+		return false;
+	}
+
+	public CodeSource getCodeSource() {
+		return codeSource;
+	}
+
+	public File getJar() {
+		return jar;
 	}
 
 	public CloseableHttpClient getHttpClient() {
@@ -66,72 +131,59 @@ public class Config {
 	public Host getHost() {
 		return host;
 	}
-	
+
 	public String getArchHostPrefix() {
 		return arch.toString() + "-" + host.toString();
 	}
-	
+
 	public File getDir() {
 		return dir;
 	}
 
 	public File getBin() {
 		switch (getHost()) {
-		case apple_darwin:
-			return new File(getDir(), "Quetoo.app/Contents/MacOS");
-		default:
-			return new File(getDir(), "bin");
+			case apple_darwin:
+				return new File(getDir(), "Quetoo.app/Contents/MacOS");
+			default:
+				return new File(getDir(), "bin");
 		}
 	}
 
 	public File getEtc() {
 		switch (getHost()) {
-		case apple_darwin:
-			return new File(getDir(), "Quetoo.app/Contents/MacOS/etc");
-		default:
-			return new File(getDir(), "etc");
+			case apple_darwin:
+				return new File(getDir(), "Quetoo.app/Contents/MacOS/etc");
+			default:
+				return new File(getDir(), "etc");
 		}
 	}
 
 	public File getLib() {
 		switch (getHost()) {
-		case apple_darwin:
-			return new File(getDir(), "Quetoo.app/Contents/MacOS/lib");
-		default:
-			return new File(getDir(), "lib");
+			case apple_darwin:
+				return new File(getDir(), "Quetoo.app/Contents/MacOS/lib");
+			default:
+				return new File(getDir(), "lib");
 		}
 	}
 
 	public File getShare() {
 		switch (getHost()) {
-		case apple_darwin:
-			return new File(getDir(), "Quetoo.app/Contents/Resources");
-		default:
-			return new File(getDir(), "share");
+			case apple_darwin:
+				return new File(getDir(), "Quetoo.app/Contents/Resources");
+			default:
+				return new File(getDir(), "share");
 		}
 	}
 
-	public File getUpdateBin() {
-		switch (getHost()) {
-		case apple_darwin:
-			return new File(getDir(), "Update.app/Contents/MacOS");
-		default:
-			return getBin();
-		}
-	}
-	
-	public File getExecutable() {
-		return new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
-	}
-	
 	public Boolean getPrune() {
 		return prune;
 	}
-	
+
 	public Boolean getConsole() {
 		return console;
 	}
-	
+
 	public static Config getDefaults() {
 		return defaults;
 	}

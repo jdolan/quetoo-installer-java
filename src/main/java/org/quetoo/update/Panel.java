@@ -56,6 +56,8 @@ public class Panel extends JPanel {
 		summary = new JTextArea(10, 40);
 		summary.setMargin(new Insets(5, 5, 5, 5));
 		summary.setEditable(false);
+		
+		summary.append("Updating " + manager.getConfig().getDir() + "\n");
 
 		final String prefix = manager.getConfig().getArchHostPrefix();
 		summary.append("Retrieving objects list for " + prefix + "..\n");
