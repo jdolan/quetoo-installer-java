@@ -133,7 +133,7 @@ public class Config {
 	}
 
 	public String getArchHostPrefix() {
-		return arch.toString() + "-" + host.toString();
+		return arch.toString() + "-" + host.toString().replace('_', '-');
 	}
 
 	public File getDir() {

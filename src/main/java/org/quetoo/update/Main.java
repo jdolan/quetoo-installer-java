@@ -13,7 +13,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.SystemUtils;
 
 /**
@@ -53,11 +52,15 @@ public class Main {
 
 		final Option prune = Option.builder("p")
 				.longOpt("prune")
+				.hasArg()
+				.optionalArg(true)
 				.desc("prune unknown files")
 				.build();
 
 		final Option nogui = Option.builder("c")
 				.longOpt("console")
+				.hasArg()
+				.optionalArg(true)
 				.desc("do not create the user interface")
 				.build();
 
@@ -96,16 +99,26 @@ public class Main {
 				final File tempFile = File.createTempFile("quetoo-update", ".jar");
 				FileUtils.copyFile(config.getJar(), tempFile);
 
-				final String[] command = ArrayUtils.addAll( new String[] { 
-						SystemUtils.JAVA_HOME + "/bin/java", "-jar", tempFile.getAbsolutePath()
-				}, args);
-
-				new ProcessBuilder().inheritIO().command(command).start();				
+				new ProcessBuilder().inheritIO().command(new String[] {
+						SystemUtils.JAVA_HOME + "/bin/java",
+						"-jar",
+						tempFile.getAbsolutePath(),
+						"--arch",
+						config.getArch().toString(),
+						"--host",
+						config.getHost().toString(),
+						"--dir",
+						config.getDir().getAbsolutePath(),
+						"--prune",
+						config.getPrune().toString(),
+						"--console",
+						config.getConsole().toString()
+				}).start();
 			} catch (IOException ioe) {
 				ioe.printStackTrace(System.err);
 				System.exit(2);
 			}
-			
+
 			System.exit(0);
 		}
 		

@@ -11,11 +11,6 @@ public enum Host {
 
 	unknown, apple_darwin, pc_linux, pc_windows, w64_mingw32;
 
-	@Override
-	public String toString() {
-		return super.toString().replace('_', '-');
-	}
-
 	/**
 	 * @param string The host name.
 	 * @return The most appropriate Host for `string`.
@@ -37,7 +32,12 @@ public enum Host {
 		if (StringUtils.containsIgnoreCase(string, "mingw")) {
 			return w64_mingw32;
 		}
-
-		return unknown;
+		
+		try {
+			return valueOf(string);
+		} catch (Throwable t) {
+			t.printStackTrace(System.err);
+			return unknown;
+		}
 	}
 }
