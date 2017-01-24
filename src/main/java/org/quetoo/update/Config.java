@@ -73,25 +73,24 @@ public class Config {
 	private File resolveDir() {
 		
 		if (jar != null) {
-			final String path = jar.getAbsolutePath();
 			switch (host) {
-				case apple_darwin:
+				case apple_darwin: {
+					final String path = jar.getAbsolutePath();
+					
 					if (path.contains("Quetoo.app")) {
 						return new File(path.replaceFirst("Quetoo\\.app.*", ""));
 					}
+				}
 					break;
-				case pc_windows:
-				case w64_mingw32:
-					if (path.contains("\\lib\\")) {
-						return new File(path.replaceFirst("\\lib\\.*", ""));
+				default: {
+					final File dir = jar.getParentFile();
+					
+					if (dir.getName().compareToIgnoreCase("lib") == 0) {
+						return dir.getParentFile();
 					}
-					break;
-				case pc_linux:
-				case unknown:
-					if (path.contains("/lib/")) {
-						return new File(path.replaceFirst("/lib/.*", ""));
-					}
-					break;
+					
+					return dir;
+				}
 			}
 		}
 		
