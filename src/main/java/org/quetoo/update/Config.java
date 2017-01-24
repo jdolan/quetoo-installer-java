@@ -82,14 +82,14 @@ public class Config {
 					break;
 				case pc_windows:
 				case w64_mingw32:
-					if (path.contains("\\bin\\")) {
-						return new File(path.replaceFirst("\\bin\\.*", ""));
+					if (path.contains("\\lib\\")) {
+						return new File(path.replaceFirst("\\lib\\.*", ""));
 					}
 					break;
 				case pc_linux:
 				case unknown:
-					if (path.contains("/bin/")) {
-						return new File(path.replaceFirst("/bin/.*", ""));
+					if (path.contains("/lib/")) {
+						return new File(path.replaceFirst("/lib/.*", ""));
 					}
 					break;
 			}
