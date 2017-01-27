@@ -15,8 +15,8 @@ import org.apache.http.impl.client.HttpClients;
  */
 public class Config {
 
-	public static final String NAME = "Quetoo Update";
-	public static final String VERSION = "1.0-SNAPSHOT";
+	public static final String NAME = "Quetoo Installer";
+	public static final String VERSION = "1.0 BETA";
 
 	public static final String ARCH = "quetoo.update.arch";
 	public static final String HOST = "quetoo.update.host";
