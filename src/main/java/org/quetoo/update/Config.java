@@ -71,29 +71,24 @@ public class Config {
 	 * @return The most appropriate default destination directory.
 	 */
 	private File resolveDir() {
-		
+
 		if (jar != null) {
 			switch (host) {
-				case apple_darwin: {
-					final String path = jar.getAbsolutePath();
-					
-					if (path.contains("Quetoo.app")) {
-						return new File(path.replaceFirst("Quetoo\\.app.*", ""));
-					}
+			case apple_darwin:
+				final String path = jar.getAbsolutePath();
+				
+				if (path.contains("Quetoo.app")) {
+					return new File(path.replaceFirst("Quetoo\\.app.*", ""));
 				}
-					break;
-				default: {
-					final File dir = jar.getParentFile();
-					
-					if (dir.getName().compareToIgnoreCase("lib") == 0) {
-						return dir.getParentFile();
-					}
-					
-					return dir;
+				
+				break;
+			default:
+				if (jar.getParentFile().getName().equalsIgnoreCase("lib")) {
+					return dir.getParentFile();
 				}
 			}
 		}
-		
+
 		return new File(SystemUtils.USER_DIR);
 	}
 	
