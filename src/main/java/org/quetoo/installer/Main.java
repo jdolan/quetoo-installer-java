@@ -1,6 +1,6 @@
-package org.quetoo.update;
+package org.quetoo.installer;
 
-import static org.quetoo.update.Config.getDefaults;
+import static org.quetoo.installer.Config.getDefaults;
 
 import java.io.File;
 import java.io.IOException;
@@ -88,7 +88,7 @@ public class Main {
 				}
 			});
 		} catch (ParseException pe) {
-			new HelpFormatter().printHelp("quetoo-update", options);
+			new HelpFormatter().printHelp("quetoo-installer", options);
 			System.exit(1);
 		}
 
@@ -96,7 +96,7 @@ public class Main {
 		
 		if (config.shouldRelaunch()) {			
 			try {
-				final File tempFile = File.createTempFile("quetoo-update", ".jar");
+				final File tempFile = File.createTempFile("quetoo-installer", ".jar");
 				FileUtils.copyFile(config.getJar(), tempFile);
 
 				new ProcessBuilder().inheritIO().command(new String[] {

@@ -1,4 +1,4 @@
-package org.quetoo.update;
+package org.quetoo.installer;
 
 import java.io.File;
 import java.security.CodeSource;

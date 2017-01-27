@@ -1,7 +1,7 @@
-package org.quetoo.update;
+package org.quetoo.installer;
 
 import static org.junit.Assert.assertEquals;
-import static org.quetoo.update.Arch.getArch;
+import static org.quetoo.installer.Arch.getArch;
 
 import org.junit.Test;
 

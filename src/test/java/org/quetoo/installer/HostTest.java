@@ -1,7 +1,7 @@
-package org.quetoo.update;
+package org.quetoo.installer;
 
 import static org.junit.Assert.assertEquals;
-import static org.quetoo.update.Host.getHost;
+import static org.quetoo.installer.Host.getHost;
 
 import org.junit.Test;
 

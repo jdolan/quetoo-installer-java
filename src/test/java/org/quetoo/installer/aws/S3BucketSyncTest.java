@@ -1,4 +1,4 @@
-package org.quetoo.update.aws;
+package org.quetoo.installer.aws;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;

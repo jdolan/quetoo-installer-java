@@ -1,11 +1,11 @@
-package org.quetoo.update;
+package org.quetoo.installer;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
-import org.quetoo.update.aws.S3BucketSync;
+import org.quetoo.installer.aws.S3BucketSync;
 
 import io.reactivex.Observable;
 

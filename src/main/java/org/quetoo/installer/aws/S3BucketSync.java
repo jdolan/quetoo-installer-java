@@ -1,4 +1,4 @@
-package org.quetoo.update.aws;
+package org.quetoo.installer.aws;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -10,7 +10,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.quetoo.update.Sync;
+import org.quetoo.installer.Sync;
 
 import io.reactivex.Observable;
 import io.reactivex.functions.Predicate;

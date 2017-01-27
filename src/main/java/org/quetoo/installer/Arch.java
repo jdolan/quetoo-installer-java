@@ -1,4 +1,4 @@
-package org.quetoo.update;
+package org.quetoo.installer;
 
 import org.apache.commons.lang3.StringUtils;
 

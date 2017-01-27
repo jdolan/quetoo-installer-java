@@ -1,4 +1,4 @@
-package org.quetoo.update.aws;
+package org.quetoo.installer.aws;
 
 import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
 

@@ -1,7 +1,7 @@
-package org.quetoo.update.aws;
+package org.quetoo.installer.aws;
 
-import static org.quetoo.update.aws.S3.getInstant;
-import static org.quetoo.update.aws.S3.getString;
+import static org.quetoo.installer.aws.S3.getInstant;
+import static org.quetoo.installer.aws.S3.getString;
 
 import java.time.Instant;
 
