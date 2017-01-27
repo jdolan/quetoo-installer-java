@@ -83,8 +83,10 @@ public class Config {
 				
 				break;
 			default:
-				if (jar.getParentFile().getName().equalsIgnoreCase("lib")) {
-					return dir.getParentFile();
+				final File parent = jar.getParentFile();
+				
+				if (parent.getName().equalsIgnoreCase("lib")) {
+					return parent.getParentFile();
 				}
 			}
 		}
