@@ -67,7 +67,7 @@ public class Config {
 		prune = Boolean.parseBoolean(properties.getProperty(PRUNE, "false"));
 		console = Boolean.parseBoolean(properties.getProperty(CONSOLE, "false"));
 	}
-	
+
 	/**
 	 * @return The most appropriate default destination directory.
 	 */
@@ -75,26 +75,26 @@ public class Config {
 
 		if (jar != null) {
 			switch (host) {
-			case apple_darwin:
-				final String path = jar.getAbsolutePath();
-				
-				if (path.contains("Quetoo.app")) {
-					return new File(path.replaceFirst("Quetoo\\.app.*", ""));
-				}
-				
-				break;
-			default:
-				final File parent = jar.getParentFile();
-				
-				if (parent.getName().equalsIgnoreCase("lib")) {
-					return parent.getParentFile();
-				}
+				case apple_darwin:
+					final String path = jar.getAbsolutePath();
+
+					if (path.contains("Quetoo.app")) {
+						return new File(path.replaceFirst("Quetoo\\.app.*", ""));
+					}
+
+					break;
+				default:
+					final File parent = jar.getParentFile();
+
+					if (parent.getName().equalsIgnoreCase("lib")) {
+						return parent.getParentFile();
+					}
 			}
 		}
 
 		return new File(SystemUtils.USER_DIR);
 	}
-	
+
 	/**
 	 * @return True if the executable jar resides within the destination directory.
 	 */
