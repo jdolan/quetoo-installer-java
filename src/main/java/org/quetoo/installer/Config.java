@@ -4,6 +4,7 @@ import java.io.File;
 import java.security.CodeSource;
 import java.util.Properties;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -52,7 +53,7 @@ public class Config {
 		httpClient = HttpClients.createDefault();
 
 		codeSource = getClass().getProtectionDomain().getCodeSource();
-		jar = new File(codeSource.getLocation().getPath());
+		jar = FileUtils.toFile(codeSource.getLocation());
 
 		arch = Arch.getArch(properties.getProperty(ARCH, SystemUtils.OS_ARCH));
 		host = Host.getHost(properties.getProperty(HOST, SystemUtils.OS_NAME));
