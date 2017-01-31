@@ -113,7 +113,7 @@ public class S3BucketSync implements Sync {
 	 */
 	private <T> T executeHttpRequest(final String path, ResponseHandler<T> handler) throws IOException {
 
-		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + URLEncoder.encode(path);
+		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + URLEncoder.encode(path, "UTF-8");
 
 		return httpClient.execute(new HttpGet(uri), res -> {
 			return handler.handleResponse(res.getEntity().getContent());
