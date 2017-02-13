@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLEncoder;
 import java.util.function.Function;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -114,7 +115,7 @@ public class S3BucketSync implements Sync {
 	 */
 	private <T> T executeHttpRequest(final String path, ResponseHandler<T> handler) throws IOException {
 
-		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + path;
+		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + URLEncoder.encode(path, "UTF-8");
 
 		return httpClient.execute(new HttpGet(uri), res -> {
 			return handler.handleResponse(res.getEntity().getContent());
