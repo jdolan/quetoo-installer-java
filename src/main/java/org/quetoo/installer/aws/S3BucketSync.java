@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Function;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.quetoo.installer.Sync;
@@ -146,15 +148,21 @@ public class S3BucketSync implements Sync {
 
 			final boolean wantsDirectory = obj.getKey().endsWith("/");
 
+			String md5 = null;
+			
 			if (file.exists()) {
 				final boolean isDirectory = file.isDirectory();
 
 				if (isDirectory != wantsDirectory) {
 					FileUtils.deleteQuietly(file);
+				} else {
+					if (file.isFile()) {
+						md5 = DigestUtils.md5Hex(FileUtils.readFileToByteArray(file));
+					}
 				}
 			}
 
-			if (!file.exists() || file.lastModified() < obj.getLastModifiedTime()) {
+			if (!file.exists() || !StringUtils.equals(md5, obj.getEtag())) {
 
 				if (wantsDirectory) {
 					FileUtils.forceMkdir(file);

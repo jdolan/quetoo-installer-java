@@ -1,10 +1,7 @@
 package org.quetoo.installer.aws;
 
-import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
-
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Instant;
 import java.util.stream.Stream;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -78,18 +75,6 @@ public class S3 {
 	 */
 	public static String getString(final Node node, final String name) {
 		return getChildNode(node, name).getChildNodes().item(0).getNodeValue();
-	}
-
-	/**
-	 * Parses an Instant from the named child of `node`.
-	 * 
-	 * @param node The node from which to resolve the child.
-	 * @param name The child node's local name.
-	 * 
-	 * @return The Instant representation of the parsed ISO date and time.
-	 */
-	public static Instant getInstant(final Node node, final String name) {
-		return Instant.from(ISO_DATE_TIME.parse(getString(node, name)));
 	}
 
 	/**

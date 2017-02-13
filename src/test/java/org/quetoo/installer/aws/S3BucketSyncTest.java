@@ -7,6 +7,7 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.http.impl.client.HttpClients;
@@ -35,13 +36,14 @@ public class S3BucketSyncTest {
 				.withHttpClient(HttpClients.createDefault())
 				.withBucketName("quetoo")
 				.withPredicate(s -> s.getKey().startsWith("x86_64-apple-darwin"))
+				.withMapper(s -> new File(s.getKey().replace("x86_64-apple-darwin", "")))
 				.withDestination(destination)
 				.build();
 		
 		FileUtils.deleteQuietly(destination);
 	}
 	
-	private void onNext(final File file) {
+	private void onSync(final File file) {
 		assertTrue(file.exists());
 		System.out.println("Updated " + file);
 	}
@@ -50,16 +52,19 @@ public class S3BucketSyncTest {
 		t.printStackTrace(System.err);
 		fail();
 	}
+	
+	private void onComplete() {
+		System.out.println("Complete");
+	}
 
 	@Test
 	public void sync() throws IOException {
 		
 		Observable<File> files = s3BucketSync.sync();
 		
-		files.subscribe(this::onNext, this::onError);
-		files.toList().subscribe(f -> {
-			assertNotNull(f);
-			assertFalse(f.isEmpty());
-		});
+		files.subscribe(this::onSync, this::onError, this::onComplete);
+		List<File> result = files.toList().blockingGet();
+		assertNotNull(result);
+		assertFalse(result.isEmpty());
 	}
 }

@@ -1,9 +1,6 @@
 package org.quetoo.installer.aws;
 
-import static org.quetoo.installer.aws.S3.getInstant;
 import static org.quetoo.installer.aws.S3.getString;
-
-import java.time.Instant;
 
 import org.w3c.dom.Node;
 
@@ -15,10 +12,10 @@ import org.w3c.dom.Node;
 public class S3Object {
 
 	private static final String KEY = "Key";
-	private static final String LAST_MODIFIED = "LastModified";
+	private static final String ETAG = "ETag";
 
 	private final String key;
-	private final Instant lastModified;
+	private final String etag;
 
 	/**
 	 * Instantiates an {@link S3Object} from the given XML node.
@@ -27,18 +24,14 @@ public class S3Object {
 	 */
 	public S3Object(final Node node) {
 		key = getString(node, KEY);
-		lastModified = getInstant(node, LAST_MODIFIED);
+		etag = getString(node, ETAG).replaceAll("\"", "");
 	}
 
 	public String getKey() {
 		return key;
 	}
-
-	public Instant getLastModified() {
-		return lastModified;
-	}
-
-	public long getLastModifiedTime() {
-		return lastModified.toEpochMilli();
+	
+	public String getEtag() {
+		return etag;
 	}
 }
