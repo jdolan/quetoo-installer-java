@@ -78,10 +78,9 @@ public class Main {
 			final CommandLine commandLine = new DefaultParser().parse(options, args);
 			commandLine.iterator().forEachRemaining(opt -> {
 				if (commandLine.hasOption(opt.getOpt())) {
-					final String value, key = "quetoo.update." + opt.getLongOpt();
-					if (opt.hasArg()) {
-						value = commandLine.getOptionValue(opt.getOpt());
-					} else {
+					String key = "quetoo.update." + opt.getLongOpt();
+					String value = commandLine.getOptionValue(opt.getOpt());
+					if (value == null) {
 						value = "true";
 					}
 					properties.setProperty(key, value);
