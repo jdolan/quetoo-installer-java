@@ -11,11 +11,25 @@ import io.reactivex.Observable;
  * @author jdolan
  */
 public interface Sync {
+	
+	/**
+	 * A listener interface for the Sync.
+	 */
+	interface Listener {
+		
+		/**
+		 * Called when the Sync source has been read to setup progress reporting.
+		 * 
+		 * @param count The number of items to sync.
+		 * @param size The total size of the items to sync in bytes.
+		 */
+		void onRead(int count, int size);	
+	}
 		
 	/**
 	 * Cancels any pending sync operation.
 	 */
-	public void cancel();
+	void cancel();
 	
 	/**
 	 * Synchronizes the remote source to the configured destination.
@@ -23,5 +37,5 @@ public interface Sync {
 	 * @return A List of all Files synchronized from the remote source.
 	 * @throws IOException If an error occurs.
 	 */
-	public Observable<File> sync() throws IOException;
+	Observable<File> sync() throws IOException;
 }

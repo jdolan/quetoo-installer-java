@@ -36,6 +36,7 @@ public class S3BucketSync implements Sync {
 		private Predicate<S3Object> predicate;
 		private Function<S3Object, File> mapper;
 		private File destination;
+		private Listener listener;
 
 		public Builder withHttpClient(final CloseableHttpClient httpClient) {
 			this.httpClient = httpClient;
@@ -66,6 +67,11 @@ public class S3BucketSync implements Sync {
 			this.destination = new File(destination);
 			return this;
 		}
+		
+		public Builder withListener(final Listener listener) {
+			this.listener = listener;
+			return this;
+		}
 
 		public S3BucketSync build() {
 			return new S3BucketSync(this);
@@ -79,6 +85,7 @@ public class S3BucketSync implements Sync {
 	private final Predicate<S3Object> predicate;
 	private final Function<S3Object, File> mapper;
 	private final File destination;
+	private final Listener listener;
 	private Boolean isCancelled;
 
 	/**
@@ -93,6 +100,7 @@ public class S3BucketSync implements Sync {
 		predicate = builder.predicate;
 		mapper = builder.mapper;
 		destination = builder.destination;
+		listener = builder.listener;
 		isCancelled = false;
 	}
 
@@ -129,7 +137,13 @@ public class S3BucketSync implements Sync {
 	 * @throws IOException If an error occurs.
 	 */
 	private S3Bucket read() throws IOException {
-		return new S3Bucket(executeHttpRequest("", S3::getDocument));
+		final S3Bucket bucket = new S3Bucket(executeHttpRequest("", S3::getDocument));
+		
+		if (listener != null) {
+			listener.onRead(bucket.getObjects().size(), bucket.getSize());
+		}
+		
+		return bucket;
 	}
 
 	/**
