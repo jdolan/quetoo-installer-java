@@ -44,6 +44,10 @@ public class S3Bucket implements Iterable<S3Object> {
 	public String getName() {
 		return name;
 	}
+	
+	public Integer getSize() {
+		return getObjects().stream().mapToInt(S3Object::getSize).sum();
+	}
 
 	public List<S3Object> getObjects() {
 		return objects;

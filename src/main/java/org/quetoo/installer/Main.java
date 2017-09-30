@@ -57,7 +57,7 @@ public class Main {
 				.desc("prune unknown files")
 				.build();
 
-		final Option nogui = Option.builder("c")
+		final Option console = Option.builder("c")
 				.longOpt("console")
 				.hasArg()
 				.optionalArg(true)
@@ -70,7 +70,7 @@ public class Main {
 		options.addOption(host);
 		options.addOption(dir);
 		options.addOption(prune);
-		options.addOption(nogui);
+		options.addOption(console);
 
 		final Properties properties = new Properties();
 
