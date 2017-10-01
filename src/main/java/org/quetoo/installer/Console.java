@@ -1,9 +1,6 @@
 package org.quetoo.installer;
 
-import java.io.File;
 import java.io.IOException;
-
-import io.reactivex.Observable;
 
 /**
  * The console user interface.
@@ -30,36 +27,21 @@ public class Console {
 	 */
 	public void sync() {
 		try {
-			final Observable<File> files = manager.sync();
-			files.subscribe(this::onSync, this::onError, this::onComplete);
-			files.toList().blockingGet();
-		} catch (IOException ioe) {
-			onError(ioe);
+			manager.sync(null, null, this::onSync).blockingSubscribe();
+		} catch (Throwable t) {
+			t.printStackTrace(System.err);
+			System.exit(1);
 		}
-	}
 
-	/**
-	 * Logs the sync progress of `file`.
-	 * 
-	 * @param file The newly synced File.
-	 */
-	private void onSync(final File file) {
-		System.out.println("Updated " + file);
-	}
-
-	/**
-	 * Logs the sync completion.
-	 */
-	private void onComplete() {
 		System.out.println("Complete");
 	}
 
 	/**
-	 * Logs the specified error to `stderr`.
+	 * Logs the sync progress of `asset`.
 	 * 
-	 * @param throwable The Throwable error.
+	 * @param file The newly synced Asset.
 	 */
-	private void onError(final Throwable throwable) {
-		throwable.printStackTrace(System.err);
+	private void onSync(final Asset asset) {
+		System.out.println("Updated " + asset);
 	}
 }

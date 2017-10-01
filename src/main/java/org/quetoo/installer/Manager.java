@@ -1,26 +1,25 @@
 package org.quetoo.installer;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.quetoo.installer.aws.S3BucketSync;
 
 import io.reactivex.Observable;
+import io.reactivex.functions.Consumer;
 
 /**
- * The update manager.
+ * The manager.
  * 
  * @author jdolan
  */
 public class Manager {
 	
-	private final Config config;
+	private static final Consumer<Asset> noop = asset -> {};
 
-	private final Observable<Sync> syncs;
-	
-	private Boolean isCancelled;
+	private final Config config;
+	private final Observable<S3BucketSync> syncs;
 		
 	/**
 	 * Instantiates a {@link Manager} with the specified {@link Config}.
@@ -30,8 +29,7 @@ public class Manager {
 	public Manager(final Config config) {
 		this.config = config;
 		
-		syncs = Observable.fromArray(
-				
+		syncs = Observable.just(
 			new S3BucketSync.Builder()
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo")
@@ -49,62 +47,50 @@ public class Manager {
 				.build()
 		);
 	}
-	
-	/**
-	 * Modifies permissions on the newly synced File.
-	 * 
-	 * @param file The newly synced File.
-	 * @return The File.
-	 */
-	private File onSync(final File file) {
 
-		if (file.getParentFile().equals(config.getBin())) {
-			file.setExecutable(true);
-		}
-		
-		return file;
-	}
-	
 	/**
-	 * Prunes the configured directory to mirror the aggregate sync result.
+	 * Dispatches all configured Syncs and merges their result.
 	 * 
+	 * @param onRead An optional Consumer for read events.
+	 * @param onDelta An optional Consumer for delta events.
+	 * @param onSync An optional Consumer for sync events.
+	 * @return An Observable yielding the merged sync result.
+	 */
+	public Observable<File> sync(
+			final Consumer<Asset> onRead,
+			final Consumer<Asset> onDelta,
+			final Consumer<Asset> onSync) {
+
+		final Observable<File> files = Observable
+				.merge(syncs.map(s -> s.sync(
+						onRead != null ? onRead : noop,
+						onDelta != null ? onDelta : noop,
+						onSync != null ? onSync : noop
+				))).share();
+
+		files.toList().subscribe(this::postProcess);
+		return files;
+	}
+
+	/**
+	 * Post-processes the aggregate sync result.
 	 * @param files The aggregate sync result.
 	 */
-	private void prune(List<File> files) {
+	private void postProcess(List<File> files) {
 		
-		if (config.getPrune() && !isCancelled) {
+		for (File file : files) {
+			if (file.getParentFile().equals(config.getBin())) {
+				file.setExecutable(true);
+			}
+		}
+		
+		if (config.getPrune()) {
 			FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
 				return !files.contains(file);
 			}).forEach(file -> {
 				FileUtils.deleteQuietly(file);
-				System.out.println("Pruned " + file);
 			});
 		}		
-	}
-	
-	/**
-	 * Cancels all pending sync operations.
-	 */
-	public void cancel() {
-		isCancelled = true;
-		syncs.forEach(Sync::cancel);
-	}
-	
-	/**
-	 * Dispatches the configured {@link Sync}s.
-	 * 
-	 * @return An Observable of the merged {@link Sync} result.
-	 * @throws IOException If an error occurs.
-	 */
-	public Observable<File> sync() throws IOException {
-
-		Observable<File> files = Observable.merge(syncs.map(Sync::sync))
-										   .map(this::onSync)
-										   .share();
-
-		files.toList().subscribe(this::prune);
-
-		return files;
 	}
 	
 	/**

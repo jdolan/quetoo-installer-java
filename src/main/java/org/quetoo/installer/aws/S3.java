@@ -76,20 +76,20 @@ public class S3 {
 	public static String getString(final Node node, final String name) {
 		return getChildNode(node, name).getChildNodes().item(0).getNodeValue();
 	}
-	
+
 	/**
-	 * Parses an Integer from the named child of `node`.
+	 * Parses an Long from the named child of `node`.
 	 * 
 	 * @param node The node from which to resolve the child.
 	 * @param name The child node's local name.
 	 * 
-	 * @return The Integer representation of the child node.
+	 * @return The Long representation of the child node.
 	 */
-	public static Integer getInteger(final Node node, final String name) {
+	public static Long getLong(final Node node, final String name) {
 		try {
-			return Integer.valueOf(getString(node, name));
+			return Long.valueOf(getString(node, name));
 		} catch (NumberFormatException nfe) {
-			return 0;
+			return 0L;
 		}
 	}
 

@@ -13,11 +13,13 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.quetoo.installer.Asset;
 import org.quetoo.installer.Sync;
 
 import io.reactivex.Observable;
+import io.reactivex.Single;
+import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Predicate;
-import io.reactivex.schedulers.Schedulers;
 
 /**
  * Synchronizes a local file system destination with an S3 bucket.
@@ -36,7 +38,6 @@ public class S3BucketSync implements Sync {
 		private Predicate<S3Object> predicate;
 		private Function<S3Object, File> mapper;
 		private File destination;
-		private Listener listener;
 
 		public Builder withHttpClient(final CloseableHttpClient httpClient) {
 			this.httpClient = httpClient;
@@ -67,26 +68,17 @@ public class S3BucketSync implements Sync {
 			this.destination = new File(destination);
 			return this;
 		}
-		
-		public Builder withListener(final Listener listener) {
-			this.listener = listener;
-			return this;
-		}
 
 		public S3BucketSync build() {
 			return new S3BucketSync(this);
 		}
 	}
 
-	private static final File CANCELLED = new File("");
-
 	private final CloseableHttpClient httpClient;
 	private final String bucketName;
 	private final Predicate<S3Object> predicate;
 	private final Function<S3Object, File> mapper;
 	private final File destination;
-	private final Listener listener;
-	private Boolean isCancelled;
 
 	/**
 	 * Instantiates an {@link S3BucketSync} with the given Builder.
@@ -100,8 +92,16 @@ public class S3BucketSync implements Sync {
 		predicate = builder.predicate;
 		mapper = builder.mapper;
 		destination = builder.destination;
-		listener = builder.listener;
-		isCancelled = false;
+	}
+
+	/**
+	 * Maps the given {@link S3Object} to a local File.
+	 * 
+	 * @param obj The S3Object.
+	 * @return The local File for the given S3Object.
+	 */
+	private File mapToFile(final S3Object obj) {
+		return new File(destination, mapper.apply(obj).getPath());
 	}
 
 	/**
@@ -121,9 +121,11 @@ public class S3BucketSync implements Sync {
 	 * @return The parsed response.
 	 * @throws IOException If an error occurs.
 	 */
-	private <T> T executeHttpRequest(final String path, ResponseHandler<T> handler) throws IOException {
+	private <T> T executeHttpRequest(final String path, ResponseHandler<T> handler)
+			throws IOException {
 
-		final String uri = "http://" + bucketName + ".s3.amazonaws.com/" + URLEncoder.encode(path, "UTF-8");
+		final String uri = "http://" + bucketName + ".s3.amazonaws.com/"
+				+ URLEncoder.encode(path, "UTF-8");
 
 		return httpClient.execute(new HttpGet(uri), res -> {
 			return handler.handleResponse(res.getEntity().getContent());
@@ -131,94 +133,79 @@ public class S3BucketSync implements Sync {
 	}
 
 	/**
-	 * Reads the remote bucket listing, returning the {@link S3Bucket}.
+	 * Performs a delta check for the given {@link S3Object}.
 	 * 
-	 * @return The {@link S3Bucket}.
+	 * @param obj The {@link S3Object}.
+	 * @return True if the object represents a delta, false otherwise.
 	 * @throws IOException If an error occurs.
 	 */
-	private S3Bucket read() throws IOException {
-		final S3Bucket bucket = new S3Bucket(executeHttpRequest("", S3::getDocument));
-		
-		if (listener != null) {
-			listener.onRead(bucket.getObjects().size(), bucket.getSize());
+	private boolean delta(final S3Object obj) throws IOException {
+
+		final File file = mapToFile(obj);
+		if (file.exists()) {
+			if (file.isDirectory() && obj.isDirectory()) {
+				return false;
+			}
+
+			assert (file.isFile());
+
+			final String md5 = DigestUtils.md5Hex(FileUtils.readFileToByteArray(file));
+			if (StringUtils.equals(md5, obj.getEtag())) {
+				return false;
+			}
 		}
-		
-		return bucket;
+
+		return true;
 	}
 
 	/**
-	 * Syncs the specified {@link S3Object} to the configured destination.
+	 * Synchronizes the given {@link S3Object}.
 	 * 
-	 * @param obj The object to sync.
+	 * @param obj The {@link S3Object}.
 	 * @return The resulting File.
 	 * @throws IOException If an error occurs.
 	 */
-	private File sync(final S3Object obj) throws IOException {
+	private S3Object sync(final S3Object obj) throws IOException {
 
-		final File file;
-
-		if (isCancelled == false) {
-
-			file = new File(destination, mapper.apply(obj).getPath());
-
-			final boolean wantsDirectory = obj.getKey().endsWith("/");
-
-			String md5 = null;
-			
-			if (file.exists()) {
-				final boolean isDirectory = file.isDirectory();
-
-				if (isDirectory != wantsDirectory) {
-					FileUtils.deleteQuietly(file);
-				} else {
-					if (file.isFile()) {
-						md5 = DigestUtils.md5Hex(FileUtils.readFileToByteArray(file));
-					}
-				}
+		final File file = mapToFile(obj);
+		if (file.exists()) {
+			if (file.isDirectory() != obj.isDirectory()) {
+				FileUtils.deleteQuietly(file);
 			}
-
-			if (!file.exists() || !StringUtils.equals(md5, obj.getEtag())) {
-
-				if (wantsDirectory) {
-					FileUtils.forceMkdir(file);
-				} else {
-					FileUtils.forceMkdirParent(file);
-
-					executeHttpRequest(obj.getKey(), inputStream -> {
-						return IOUtils.copy(inputStream, new FileOutputStream(file));
-					});
-				}
-			}
-		} else {
-			file = CANCELLED;
 		}
 
-		return file;
-	}
+		if (obj.isDirectory()) {
+			FileUtils.forceMkdir(file);
+		} else {
+			FileUtils.forceMkdirParent(file);
+			executeHttpRequest(obj.getKey(), inputStream -> {
+				return IOUtils.copy(inputStream, new FileOutputStream(file));
+			});
+		}
 
-	/**
-	 * @param file A recently synced file.
-	 * @return True if the file was successfully synced, false otherwise.
-	 */
-	private Boolean wasSuccessful(final File file) {
-		return file != CANCELLED && file.exists();
+		return obj;
+	}
+	
+	@Override
+	public void close() throws IOException {
+		httpClient.close();
 	}
 
 	@Override
-	public void cancel() {
-		isCancelled = true;
-	}
-
-	@Override
-	public Observable<File> sync() throws IOException {
+	public Observable<File> sync(
+			final Consumer<Asset> onRead,
+			final Consumer<Asset> onDelta,
+			final Consumer<Asset> onSync) {
 		
-		FileUtils.forceMkdir(destination);
-
-		return Observable.fromCallable(this::read)
-						 .flatMap(Observable::fromIterable)
-						 .subscribeOn(Schedulers.newThread())
-						 .filter(predicate)
-						 .map(this::sync)
-						 .filter(this::wasSuccessful);
+		return Single.fromCallable(() -> new S3Bucket(executeHttpRequest("", S3::getDocument)))
+				.flatMapObservable(Observable::fromIterable)
+				.filter(predicate)
+				.doOnNext(onRead)
+				.filter(this::delta)
+				.doOnNext(onDelta)
+				.map(this::sync)
+				.doOnNext(onSync)
+				.map(this::mapToFile)
+				.doOnDispose(this::close);
 	}
 }

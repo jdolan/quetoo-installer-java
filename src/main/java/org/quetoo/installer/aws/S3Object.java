@@ -1,8 +1,9 @@
 package org.quetoo.installer.aws;
 
-import static org.quetoo.installer.aws.S3.getInteger;
+import static org.quetoo.installer.aws.S3.getLong;
 import static org.quetoo.installer.aws.S3.getString;
 
+import org.quetoo.installer.Asset;
 import org.w3c.dom.Node;
 
 /**
@@ -10,7 +11,7 @@ import org.w3c.dom.Node;
  * 
  * @author jdolan
  */
-public class S3Object {
+public class S3Object implements Asset {
 
 	private static final String KEY = "Key";
 	private static final String ETAG = "ETag";
@@ -18,7 +19,7 @@ public class S3Object {
 
 	private final String key;
 	private final String etag;
-	private final Integer size;
+	private final long size;
 
 	/**
 	 * Instantiates an {@link S3Object} from the given XML node.
@@ -28,18 +29,38 @@ public class S3Object {
 	public S3Object(final Node node) {
 		key = getString(node, KEY);
 		etag = getString(node, ETAG).replaceAll("\"", "");
-		size = getInteger(node, SIZE);
+		size = getLong(node, SIZE);
+	}
+
+	@Override
+	public String name() {
+		return getKey();
+	}
+
+	@Override
+	public long size() {
+		return getSize();
+	}
+
+	@Override
+	public boolean isDirectory() {
+		return key.endsWith("/");
+	}
+
+	@Override
+	public String toString() {
+		return key;
 	}
 
 	public String getKey() {
 		return key;
 	}
-	
+
 	public String getEtag() {
 		return etag;
 	}
-	
-	public int getSize() {
+
+	public long getSize() {
 		return size;
 	}
 }

@@ -7,7 +7,6 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
@@ -19,6 +18,9 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.text.DefaultCaret;
+
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * The primary container of the user interface.
@@ -35,6 +37,8 @@ public class Panel extends JPanel {
 	private final JTextArea summary;
 	private final JButton copySummary;
 	private final JButton cancel;
+
+	private Disposable disposable;
 
 	/**
 	 * Instantiates a {@link Panel} with the specified {@link Manager}.
@@ -56,7 +60,7 @@ public class Panel extends JPanel {
 		summary = new JTextArea(10, 40);
 		summary.setMargin(new Insets(5, 5, 5, 5));
 		summary.setEditable(false);
-		
+
 		summary.append("Updating " + manager.getConfig().getDir() + "\n");
 
 		final String prefix = manager.getConfig().getArchHostPrefix();
@@ -103,11 +107,18 @@ public class Panel extends JPanel {
 	 * Dispatches {@link Manager#sync()}.
 	 */
 	public void sync() {
-		try {
-			manager.sync().subscribe(this::onSync, this::onError, this::onComplete);
-		} catch (IOException ioe) {
-			onError(ioe);
+
+		if (disposable != null) {
+			disposable.dispose();
+			disposable = null;
 		}
+
+		progressBar.setValue(0);
+		progressBar.setMaximum(0);
+
+		disposable = manager.sync(null, this::onDelta, this::onSync)
+				.observeOn(Schedulers.io())
+				.subscribe(this::onFile, this::onError, this::onComplete);
 	}
 
 	/**
@@ -122,18 +133,34 @@ public class Panel extends JPanel {
 	}
 
 	/**
+	 * Updates the progress bar to include the target size of `asset`.
+	 * 
+	 * @param asset The delta Asset.
+	 */
+	private void onDelta(final Asset asset) {
+		progressBar.setMaximum(progressBar.getMaximum() + (int) asset.size());
+	}
+
+	/**
+	 * Updates the progress bar to include the progress for `asset`.
+	 * 
+	 * @param asset The newly synced Asset.
+	 */
+	private void onSync(final Asset asset) {
+		progressBar.setValue(progressBar.getValue() + (int) asset.size());
+	}
+
+	/**
 	 * Updates the interface components to reflect the newly synced File.
 	 * 
 	 * @param file The newly synced File.
 	 */
-	private void onSync(final File file) {
+	private void onFile(final File file) {
 
 		final String dir = manager.getConfig().getDir() + File.separator;
 		final String filename = file.toString().replace(dir, "");
 
 		setStatus(filename);
-
-		progressBar.setValue(progressBar.getValue() + 1);
 	}
 
 	/**
@@ -172,7 +199,9 @@ public class Panel extends JPanel {
 	 * Cancels the sync operation.
 	 */
 	private void onCancel(final ActionEvent e) {
-		setStatus("Cancelling..");
-		manager.cancel();
+		if (disposable != null) {
+			setStatus("Cancelling..");
+			disposable.dispose();
+		}
 	}
 }
