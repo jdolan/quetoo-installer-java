@@ -9,6 +9,7 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -20,6 +21,7 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultCaret;
 
+import io.reactivex.Observable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
@@ -118,9 +120,17 @@ public class Panel extends JPanel {
 		progressBar.setMaximum(0);
 		
 		Schedulers.io().scheduleDirect(() -> {
-			disposable = manager.sync(null, this::onDelta, this::onSync)
+			
+			final List<Asset> delta = manager.delta().toList().blockingGet();
+			
+			SwingUtilities.invokeLater(() -> {
+				setStatus("Syncing " + delta.size() + " assets..");
+				progressBar.setMaximum((int) delta.stream().mapToLong(Asset::size).sum());
+			});
+			
+			disposable = manager.sync(Observable.fromIterable(delta))
 					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
-					.subscribe(this::onFile, this::onError, this::onComplete);
+					.subscribe(this::onNext, this::onError, this::onComplete);
 		});
 	}
 
@@ -136,29 +146,13 @@ public class Panel extends JPanel {
 	}
 
 	/**
-	 * Updates the progress bar to include the target size of `asset`.
-	 * 
-	 * @param asset The delta Asset.
-	 */
-	private void onDelta(final Asset asset) {
-		progressBar.setMaximum(progressBar.getMaximum() + (int) asset.size());
-	}
-
-	/**
-	 * Updates the progress bar to include the progress for `asset`.
-	 * 
-	 * @param asset The newly synced Asset.
-	 */
-	private void onSync(final Asset asset) {
-		progressBar.setValue(progressBar.getValue() + (int) asset.size());
-	}
-
-	/**
 	 * Updates the interface components to reflect the newly synced File.
 	 * 
 	 * @param file The newly synced File.
 	 */
-	private void onFile(final File file) {
+	private void onNext(final File file) {
+		
+		progressBar.setValue(progressBar.getValue() + (int) file.length()); 
 
 		final String dir = manager.getConfig().getDir() + File.separator;
 		final String filename = file.toString().replace(dir, "");

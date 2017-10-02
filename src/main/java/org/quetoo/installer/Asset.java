@@ -4,6 +4,11 @@ package org.quetoo.installer;
  * An abstraction for a remote resource.
  */
 public interface Asset {
+	
+	/**
+	 * @return The Sync providing this Asset.
+	 */
+	Sync source();
 
 	/**
 	 * @return The Asset name.

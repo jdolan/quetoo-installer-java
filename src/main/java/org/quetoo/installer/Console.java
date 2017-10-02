@@ -1,6 +1,9 @@
 package org.quetoo.installer;
 
 import java.io.IOException;
+import java.util.List;
+
+import io.reactivex.Observable;
 
 /**
  * The console user interface.
@@ -30,21 +33,19 @@ public class Console {
 		System.out.println("Updating " + manager.getConfig().getDir());
 		
 		try {
-			manager.sync(null, null, this::onSync).blockingSubscribe();
+			final List<Asset> delta = manager.delta().toList().blockingGet();
+			
+			final long size = delta.stream().mapToLong(Asset::size).sum();
+			System.out.println("Fetching " + delta.size() + " assets (" + size + " bytes)");
+			
+			manager.sync(Observable.fromIterable(delta))
+					.doOnNext(System.out::println)
+					.blockingSubscribe();
 		} catch (Throwable t) {
 			t.printStackTrace(System.err);
 			System.exit(1);
 		}
 
-		System.out.println("Complete");
-	}
-
-	/**
-	 * Logs the sync progress of `asset`.
-	 * 
-	 * @param file The newly synced Asset.
-	 */
-	private void onSync(final Asset asset) {
-		System.out.println("Updated " + asset);
+		System.out.println("Update complete");
 	}
 }

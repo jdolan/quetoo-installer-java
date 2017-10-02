@@ -1,6 +1,5 @@
 package org.quetoo.installer.aws;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.File;
@@ -11,6 +10,9 @@ import org.apache.commons.io.FileUtils;
 import org.apache.http.impl.client.HttpClients;
 import org.junit.Before;
 import org.junit.Test;
+import org.quetoo.installer.Asset;
+
+import io.reactivex.Observable;
 
 /**
  * Integration tests for the {@link S3BucketSync} class.
@@ -42,15 +44,15 @@ public class S3BucketSyncTest {
 	@Test
 	public void sync() throws IOException {
 		
-		List<File> files = s3BucketSync.sync(asset -> {
-			System.out.println("Read " + asset);
-		}, asset -> {
-			System.out.println("Delta " + asset);
-		}, asset -> {
-			System.out.println("Sync " + asset);
-		}).toList().blockingGet();
+		final List<Asset> delta = s3BucketSync.delta().toList().blockingGet();
+		
+		assertNotNull(delta);
+		
+		final List<File> files = s3BucketSync.sync(Observable.fromIterable(delta))
+				.doOnNext(System.out::println)
+				.toList()
+				.blockingGet();
 
 		assertNotNull(files);
-		assertFalse(files.isEmpty());
 	}
 }

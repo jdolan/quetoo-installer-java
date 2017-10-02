@@ -7,7 +7,6 @@ import org.apache.commons.io.FileUtils;
 import org.quetoo.installer.aws.S3BucketSync;
 
 import io.reactivex.Observable;
-import io.reactivex.functions.Consumer;
 
 /**
  * The manager.
@@ -16,8 +15,6 @@ import io.reactivex.functions.Consumer;
  */
 public class Manager {
 	
-	private static final Consumer<Asset> noop = asset -> {};
-
 	private final Config config;
 	private final Observable<S3BucketSync> syncs;
 		
@@ -47,42 +44,38 @@ public class Manager {
 				.build()
 		);
 	}
+	
+	/**
+	 * 
+	 * @return An Observable yielding the aggregate delta result.
+	 */
+	public Observable<Asset> delta() {
+		return Observable.merge(syncs.map(Sync::delta));
+	}
 
 	/**
 	 * Dispatches all configured Syncs and merges their result.
 	 * 
-	 * @param onRead An optional Consumer for read events.
-	 * @param onDelta An optional Consumer for delta events.
-	 * @param onSync An optional Consumer for sync events.
+	 * @param delta The aggregate delta.
 	 * @return An Observable yielding the merged sync result.
 	 */
-	public Observable<File> sync(
-			final Consumer<Asset> onRead,
-			final Consumer<Asset> onDelta,
-			final Consumer<Asset> onSync) {
-
-		final Observable<File> files = Observable
-				.merge(syncs.map(s -> s.sync(
-						onRead != null ? onRead : noop,
-						onDelta != null ? onDelta : noop,
-						onSync != null ? onSync : noop
-				))).share();
-
-		files.toList().subscribe(this::postProcess);
-		return files;
+	public Observable<File> sync(final Observable<Asset> delta) {
+		return Observable.merge(syncs.map(sync -> sync.sync(delta)))
+				.doOnNext(file -> {
+					if (file.getParentFile().equals(config.getBin())) {
+						file.setExecutable(true);
+					}
+				})
+				.doOnComplete(() -> {
+					
+				});
 	}
 
 	/**
 	 * Post-processes the aggregate sync result.
 	 * @param files The aggregate sync result.
 	 */
-	private void postProcess(List<File> files) {
-		
-		for (File file : files) {
-			if (file.getParentFile().equals(config.getBin())) {
-				file.setExecutable(true);
-			}
-		}
+	private void prune(List<File> files) {
 		
 		if (config.getPrune()) {
 			FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {

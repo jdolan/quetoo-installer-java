@@ -6,10 +6,8 @@ import static org.quetoo.installer.aws.S3.getString;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 
 /**
  * An abstraction for the parsed XML contents of an AWS S3 bucket.
@@ -21,6 +19,7 @@ public class S3Bucket implements Iterable<S3Object> {
 	private static final String NAME = "Name";
 	private static final String CONTENTS = "Contents";
 
+	private final S3BucketSync s3BucketSync;
 	private final String name;
 	private final List<S3Object> objects;
 
@@ -29,16 +28,23 @@ public class S3Bucket implements Iterable<S3Object> {
 	 * 
 	 * @param doc A parsed S3 bucket listing (e.g. `http://quetoo.s3.amazonaws.com/`).
 	 */
-	public S3Bucket(final Document doc) {
+	public S3Bucket(final S3BucketSync s3BucketSync, final Document doc) {
+		this.s3BucketSync = s3BucketSync;
+		
 		name = getString(doc.getDocumentElement(), NAME);
-
-		final Stream<Node> contents = getChildNodes(doc.getDocumentElement(), CONTENTS);
-		objects = contents.map(S3Object::new).collect(Collectors.toList());
+		
+		objects = getChildNodes(doc.getDocumentElement(), CONTENTS)
+				.map(node -> new S3Object(s3BucketSync, node))
+				.collect(Collectors.toList());
 	}
 
 	@Override
 	public Iterator<S3Object> iterator() {
 		return objects.iterator();
+	}
+	
+	public S3BucketSync getS3BucketSync() {
+		return s3BucketSync;
 	}
 
 	public String getName() {

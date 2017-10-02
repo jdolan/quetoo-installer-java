@@ -4,7 +4,6 @@ import java.io.Closeable;
 import java.io.File;
 
 import io.reactivex.Observable;
-import io.reactivex.functions.Consumer;
 
 /**
  * Syncs synchronize a local directory with a remote one.
@@ -12,14 +11,19 @@ import io.reactivex.functions.Consumer;
  * @author jdolan
  */
 public interface Sync extends Closeable {
+	
+	/**
+	 * Performs a delta comparison of the remote source.
+	 * 
+	 * @return An Observable yielding the delta result.
+	 */
+	Observable<Asset> delta();
 
 	/**
 	 * Synchronizes the remote source to the configured destination.
 	 * 
-	 * @param onRead A Consumer for read events.
-	 * @param onDelta A Consumer for delta events.
-	 * @param onSync A Consumer for sync events.
+	 * @param delta The Assets to sync.
 	 * @return An Observable yielding the Files synchronized from the remote source.
 	 */
-	Observable<File> sync(Consumer<Asset> onRead, Consumer<Asset> onDelta, Consumer<Asset> onSync);
+	Observable<File> sync(Observable<Asset> delta);
 }

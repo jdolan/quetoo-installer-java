@@ -18,7 +18,6 @@ import org.quetoo.installer.Sync;
 
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Predicate;
 
 /**
@@ -131,6 +130,13 @@ public class S3BucketSync implements Sync {
 			return handler.handleResponse(res.getEntity().getContent());
 		});
 	}
+	
+	/**
+	 * @return A Single yielding the configured {@link S3Bucket}.
+	 */
+	private Single<S3Bucket> read() {
+		return Single.fromCallable(() -> new S3Bucket(this, executeHttpRequest("", S3::getDocument)));
+	}
 
 	/**
 	 * Performs a delta check for the given {@link S3Object}.
@@ -165,7 +171,7 @@ public class S3BucketSync implements Sync {
 	 * @return The resulting File.
 	 * @throws IOException If an error occurs.
 	 */
-	private S3Object sync(final S3Object obj) throws IOException {
+	private File sync(final S3Object obj) throws IOException {
 
 		final File file = mapToFile(obj);
 		if (file.exists()) {
@@ -183,38 +189,26 @@ public class S3BucketSync implements Sync {
 			});
 		}
 
-		return obj;
+		return file;
 	}
 	
 	@Override
 	public void close() throws IOException {
 		httpClient.close();
 	}
-	
+
 	@Override
-	public Observable<File> sync(
-			final Consumer<Asset> onRead,
-			final Consumer<Asset> onDelta,
-			final Consumer<Asset> onSync) {
-		
-		return Single.fromCallable(() -> new S3Bucket(executeHttpRequest("", S3::getDocument)))
-				.doOnSuccess(bucket -> {
-					for (S3Object obj : bucket) {
-						onRead.accept(obj);
-					}
-				})
-				.flatMapObservable(Observable::fromIterable)
+	public Observable<Asset> delta() {
+		return read().flatMapObservable(Observable::fromIterable)
 				.filter(predicate)
 				.filter(this::delta)
-				.toList()
-				.doOnSuccess(delta -> {
-					for (S3Object obj : delta) {
-						onDelta.accept(obj);
-					}
-				})
-				.flatMapObservable(Observable::fromIterable)
-				.map(this::sync)
-				.doOnNext(onSync)
-				.map(this::mapToFile);
+				.map(obj -> (Asset) obj);
+	}
+
+	@Override
+	public Observable<File> sync(final Observable<Asset> assets) {
+		return assets.filter(asset -> S3BucketSync.this.equals(asset.source()))
+				.map(asset -> (S3Object) asset)
+				.map(this::sync);
 	}
 }

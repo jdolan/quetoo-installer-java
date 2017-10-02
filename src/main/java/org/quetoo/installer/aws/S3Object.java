@@ -4,6 +4,7 @@ import static org.quetoo.installer.aws.S3.getLong;
 import static org.quetoo.installer.aws.S3.getString;
 
 import org.quetoo.installer.Asset;
+import org.quetoo.installer.Sync;
 import org.w3c.dom.Node;
 
 /**
@@ -17,6 +18,7 @@ public class S3Object implements Asset {
 	private static final String ETAG = "ETag";
 	private static final String SIZE = "Size";
 
+	private final S3BucketSync s3BucketSync;
 	private final String key;
 	private final String etag;
 	private final long size;
@@ -26,10 +28,17 @@ public class S3Object implements Asset {
 	 * 
 	 * @param node A `Contents` node of an S3 bucket listing.
 	 */
-	public S3Object(final Node node) {
+	public S3Object(final S3BucketSync s3BucketSync, final Node node) {
+		this.s3BucketSync = s3BucketSync;
+		
 		key = getString(node, KEY);
 		etag = getString(node, ETAG).replaceAll("\"", "");
 		size = getLong(node, SIZE);
+	}
+	
+	@Override
+	public Sync source() {
+		return getS3BucketSync();
 	}
 
 	@Override
@@ -50,6 +59,10 @@ public class S3Object implements Asset {
 	@Override
 	public String toString() {
 		return key;
+	}
+	
+	public S3BucketSync getS3BucketSync() {
+		return s3BucketSync;
 	}
 
 	public String getKey() {
