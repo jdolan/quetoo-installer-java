@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultCaret;
 
 import io.reactivex.disposables.Disposable;
@@ -112,13 +113,15 @@ public class Panel extends JPanel {
 			disposable.dispose();
 			disposable = null;
 		}
-
+		
 		progressBar.setValue(0);
 		progressBar.setMaximum(0);
-
-		disposable = manager.sync(null, this::onDelta, this::onSync)
-				.observeOn(Schedulers.io())
-				.subscribe(this::onFile, this::onError, this::onComplete);
+		
+		Schedulers.io().scheduleDirect(() -> {
+			disposable = manager.sync(null, this::onDelta, this::onSync)
+					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
+					.subscribe(this::onFile, this::onError, this::onComplete);
+		});
 	}
 
 	/**

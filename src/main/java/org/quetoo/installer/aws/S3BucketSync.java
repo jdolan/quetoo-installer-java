@@ -190,7 +190,7 @@ public class S3BucketSync implements Sync {
 	public void close() throws IOException {
 		httpClient.close();
 	}
-
+	
 	@Override
 	public Observable<File> sync(
 			final Consumer<Asset> onRead,
@@ -198,14 +198,23 @@ public class S3BucketSync implements Sync {
 			final Consumer<Asset> onSync) {
 		
 		return Single.fromCallable(() -> new S3Bucket(executeHttpRequest("", S3::getDocument)))
+				.doOnSuccess(bucket -> {
+					for (S3Object obj : bucket) {
+						onRead.accept(obj);
+					}
+				})
 				.flatMapObservable(Observable::fromIterable)
 				.filter(predicate)
-				.doOnNext(onRead)
 				.filter(this::delta)
-				.doOnNext(onDelta)
+				.toList()
+				.doOnSuccess(delta -> {
+					for (S3Object obj : delta) {
+						onDelta.accept(obj);
+					}
+				})
+				.flatMapObservable(Observable::fromIterable)
 				.map(this::sync)
 				.doOnNext(onSync)
-				.map(this::mapToFile)
-				.doOnDispose(this::close);
+				.map(this::mapToFile);
 	}
 }

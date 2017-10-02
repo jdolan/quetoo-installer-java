@@ -29,7 +29,7 @@ public class Manager {
 	public Manager(final Config config) {
 		this.config = config;
 		
-		syncs = Observable.just(
+		syncs = Observable.fromArray(
 			new S3BucketSync.Builder()
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo")

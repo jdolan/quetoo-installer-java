@@ -26,6 +26,9 @@ public class Console {
 	 * Dispatches {@link Manager#sync()}.
 	 */
 	public void sync() {
+		
+		System.out.println("Updating " + manager.getConfig().getDir());
+		
 		try {
 			manager.sync(null, null, this::onSync).blockingSubscribe();
 		} catch (Throwable t) {
