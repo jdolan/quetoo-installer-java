@@ -12,8 +12,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.quetoo.installer.Asset;
 
-import io.reactivex.Observable;
-
 /**
  * Integration tests for the {@link S3BucketSync} class.
  * 
@@ -44,11 +42,14 @@ public class S3BucketSyncTest {
 	@Test
 	public void sync() throws IOException {
 		
-		final List<Asset> delta = s3BucketSync.delta().toList().blockingGet();
+		final List<Asset> delta = s3BucketSync.delta()
+				.doOnNext(System.out::println)
+				.toList()
+				.blockingGet();
 		
 		assertNotNull(delta);
 		
-		final List<File> files = s3BucketSync.sync(Observable.fromIterable(delta))
+		final List<File> files = s3BucketSync.sync()
 				.doOnNext(System.out::println)
 				.toList()
 				.blockingGet();

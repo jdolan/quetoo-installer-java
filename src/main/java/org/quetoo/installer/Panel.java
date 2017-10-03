@@ -9,6 +9,8 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -21,7 +23,6 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultCaret;
 
-import io.reactivex.Observable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
@@ -41,7 +42,7 @@ public class Panel extends JPanel {
 	private final JButton copySummary;
 	private final JButton cancel;
 
-	private Disposable disposable;
+	private final List<Disposable> subscriptions = Collections.synchronizedList(new ArrayList<>());
 
 	/**
 	 * Instantiates a {@link Panel} with the specified {@link Manager}.
@@ -105,32 +106,45 @@ public class Panel extends JPanel {
 
 		setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 	}
+	
+	/**
+	 * Cancels all pending subscriptions.
+	 */
+	public void cancel() {
+		subscriptions.stream().forEach(Disposable::dispose);
+		subscriptions.clear();
+	}
+	
+	/**
+	 * Dispatches {@link Manager#delta()}.
+	 */
+	public void delta() {
+				
+		progressBar.setValue(0);
+		progressBar.setIndeterminate(true);
+		
+		Schedulers.io().scheduleDirect(() -> {
+			final Disposable delta = manager.delta()
+					.toList()
+					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
+					.subscribe(this::onDelta, this::onError);
+			subscriptions.add(delta);
+		});
+	}
 
 	/**
 	 * Dispatches {@link Manager#sync()}.
 	 */
 	public void sync() {
-
-		if (disposable != null) {
-			disposable.dispose();
-			disposable = null;
-		}
 		
 		progressBar.setValue(0);
-		progressBar.setMaximum(0);
+		progressBar.setIndeterminate(false);
 		
 		Schedulers.io().scheduleDirect(() -> {
-			
-			final List<Asset> delta = manager.delta().toList().blockingGet();
-			
-			SwingUtilities.invokeLater(() -> {
-				setStatus("Syncing " + delta.size() + " assets..");
-				progressBar.setMaximum((int) delta.stream().mapToLong(Asset::size).sum());
-			});
-			
-			disposable = manager.sync(Observable.fromIterable(delta))
-					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
-					.subscribe(this::onNext, this::onError, this::onComplete);
+			final Disposable sync = manager.sync()
+				.observeOn(Schedulers.from(SwingUtilities::invokeLater))
+				.subscribe(this::onSync, this::onError, this::onComplete);
+			subscriptions.add(sync);
 		});
 	}
 
@@ -144,13 +158,28 @@ public class Panel extends JPanel {
 		status.setText(string);
 		summary.append(string + "\n");
 	}
+	
+	/**
+	 * Updates the interface components to reflect a successful delta.
+	 * 
+	 * @param delta The delta.
+	 */
+	private void onDelta(final List<Asset> delta) {
+		
+		setStatus("Syncing " + delta.size() + " assets..");
+		
+		progressBar.setValue(0);
+		progressBar.setMaximum((int) delta.stream().mapToLong(Asset::size).sum());
+		
+		sync();
+	}
 
 	/**
 	 * Updates the interface components to reflect the newly synced File.
 	 * 
 	 * @param file The newly synced File.
 	 */
-	private void onNext(final File file) {
+	private void onSync(final File file) {
 		
 		progressBar.setValue(progressBar.getValue() + (int) file.length()); 
 
@@ -196,9 +225,7 @@ public class Panel extends JPanel {
 	 * Cancels the sync operation.
 	 */
 	private void onCancel(final ActionEvent e) {
-		if (disposable != null) {
-			setStatus("Cancelling..");
-			disposable.dispose();
-		}
+		setStatus("Cancelling..");
+		cancel();
 	}
 }

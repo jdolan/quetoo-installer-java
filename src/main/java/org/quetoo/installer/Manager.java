@@ -1,11 +1,11 @@
 package org.quetoo.installer;
 
 import java.io.File;
-import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.quetoo.installer.aws.S3BucketSync;
 
+import io.reactivex.Completable;
 import io.reactivex.Observable;
 
 /**
@@ -54,36 +54,34 @@ public class Manager {
 	}
 
 	/**
-	 * Dispatches all configured Syncs and merges their result.
-	 * 
-	 * @param delta The aggregate delta.
-	 * @return An Observable yielding the merged sync result.
+	 * @return An Observable yielding the aggregate sync result.
 	 */
-	public Observable<File> sync(final Observable<Asset> delta) {
-		return Observable.merge(syncs.map(sync -> sync.sync(delta)))
+	public Observable<File> sync() {
+		return Observable.merge(syncs.map(Sync::sync))
 				.doOnNext(file -> {
 					if (file.getParentFile().equals(config.getBin())) {
 						file.setExecutable(true);
 					}
-				})
-				.doOnComplete(() -> {
-					
 				});
 	}
 
 	/**
-	 * Post-processes the aggregate sync result.
-	 * @param files The aggregate sync result.
+	 * Prunes the destination directory, purging files not present in the configured Syncs.
+	 * 
+	 * @return A Completable yielding the prune.
 	 */
-	private void prune(List<File> files) {
-		
-		if (config.getPrune()) {
-			FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
-				return !files.contains(file);
-			}).forEach(file -> {
-				FileUtils.deleteQuietly(file);
-			});
-		}		
+	public Completable prune() {
+		return Observable.merge(syncs.map(sync -> sync.read().map(sync::map)))
+				.toList()
+				.doOnSuccess(files -> {
+					if (config.getPrune()) {
+						FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
+							return !files.contains(file);
+						}).forEach(file -> {
+							FileUtils.deleteQuietly(file);
+						});
+					}
+				}).toCompletable();
 	}
 	
 	/**

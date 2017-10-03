@@ -26,13 +26,14 @@ public class S3Bucket implements Iterable<S3Object> {
 	/**
 	 * Instantiates a new {@link S3Bucket} from the given XML document.
 	 * 
+	 * @param s3BucketSync The {@link S3BucketSync}.
 	 * @param doc A parsed S3 bucket listing (e.g. `http://quetoo.s3.amazonaws.com/`).
 	 */
 	public S3Bucket(final S3BucketSync s3BucketSync, final Document doc) {
 		this.s3BucketSync = s3BucketSync;
-		
+
 		name = getString(doc.getDocumentElement(), NAME);
-		
+
 		objects = getChildNodes(doc.getDocumentElement(), CONTENTS)
 				.map(node -> new S3Object(s3BucketSync, node))
 				.collect(Collectors.toList());
@@ -42,7 +43,7 @@ public class S3Bucket implements Iterable<S3Object> {
 	public Iterator<S3Object> iterator() {
 		return objects.iterator();
 	}
-	
+
 	public S3BucketSync getS3BucketSync() {
 		return s3BucketSync;
 	}

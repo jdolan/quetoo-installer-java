@@ -26,16 +26,17 @@ public class S3Object implements Asset {
 	/**
 	 * Instantiates an {@link S3Object} from the given XML node.
 	 * 
+	 * @param s3BucketSync The {@link S3BucketSync}.
 	 * @param node A `Contents` node of an S3 bucket listing.
 	 */
 	public S3Object(final S3BucketSync s3BucketSync, final Node node) {
 		this.s3BucketSync = s3BucketSync;
-		
+
 		key = getString(node, KEY);
 		etag = getString(node, ETAG).replaceAll("\"", "");
 		size = getLong(node, SIZE);
 	}
-	
+
 	@Override
 	public Sync source() {
 		return getS3BucketSync();
@@ -60,7 +61,7 @@ public class S3Object implements Asset {
 	public String toString() {
 		return key;
 	}
-	
+
 	public S3BucketSync getS3BucketSync() {
 		return s3BucketSync;
 	}

@@ -94,16 +94,6 @@ public class S3BucketSync implements Sync {
 	}
 
 	/**
-	 * Maps the given {@link S3Object} to a local File.
-	 * 
-	 * @param obj The S3Object.
-	 * @return The local File for the given S3Object.
-	 */
-	private File mapToFile(final S3Object obj) {
-		return new File(destination, mapper.apply(obj).getPath());
-	}
-
-	/**
 	 * A specialized ResponseHandler for conveniently dealing with response InputStreams.
 	 * 
 	 * @param <T> The parsed response object.
@@ -130,13 +120,6 @@ public class S3BucketSync implements Sync {
 			return handler.handleResponse(res.getEntity().getContent());
 		});
 	}
-	
-	/**
-	 * @return A Single yielding the configured {@link S3Bucket}.
-	 */
-	private Single<S3Bucket> read() {
-		return Single.fromCallable(() -> new S3Bucket(this, executeHttpRequest("", S3::getDocument)));
-	}
 
 	/**
 	 * Performs a delta check for the given {@link S3Object}.
@@ -147,7 +130,7 @@ public class S3BucketSync implements Sync {
 	 */
 	private boolean delta(final S3Object obj) throws IOException {
 
-		final File file = mapToFile(obj);
+		final File file = map(obj);
 		if (file.exists()) {
 			if (file.isDirectory() && obj.isDirectory()) {
 				return false;
@@ -173,7 +156,7 @@ public class S3BucketSync implements Sync {
 	 */
 	private File sync(final S3Object obj) throws IOException {
 
-		final File file = mapToFile(obj);
+		final File file = map(obj);
 		if (file.exists()) {
 			if (file.isDirectory() != obj.isDirectory()) {
 				FileUtils.deleteQuietly(file);
@@ -191,24 +174,35 @@ public class S3BucketSync implements Sync {
 
 		return file;
 	}
-	
+
 	@Override
-	public void close() throws IOException {
-		httpClient.close();
+	public File map(final Asset asset) {
+		return new File(destination, mapper.apply((S3Object) asset).getPath());
+	}
+
+	@Override
+	public Observable<Asset> read() {
+		return Single.fromCallable(() -> new S3Bucket(this, executeHttpRequest("", S3::getDocument)))
+				.flatMapObservable(Observable::fromIterable)
+				.filter(predicate)
+				.map(obj -> (Asset) obj);
 	}
 
 	@Override
 	public Observable<Asset> delta() {
-		return read().flatMapObservable(Observable::fromIterable)
-				.filter(predicate)
+		return read().map(asset -> (S3Object) asset)
 				.filter(this::delta)
 				.map(obj -> (Asset) obj);
 	}
 
 	@Override
-	public Observable<File> sync(final Observable<Asset> assets) {
-		return assets.filter(asset -> S3BucketSync.this.equals(asset.source()))
-				.map(asset -> (S3Object) asset)
+	public Observable<File> sync() {
+		return delta().map(asset -> (S3Object) asset)
 				.map(this::sync);
+	}
+
+	@Override
+	public void close() throws IOException {
+		httpClient.close();
 	}
 }
