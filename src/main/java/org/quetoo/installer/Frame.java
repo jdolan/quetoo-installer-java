@@ -33,6 +33,6 @@ public class Frame extends JFrame {
 		setLocationRelativeTo(null);
 		setVisible(true);
 
-		SwingUtilities.invokeLater(panel::delta);
+		SwingUtilities.invokeLater(panel::update);
 	}
 }

@@ -1,27 +1,27 @@
 package org.quetoo.installer;
 
 /**
- * An abstraction for a remote resource.
+ * Assets represent a remote resource.
  */
 public interface Asset {
-	
-	/**
-	 * @return The Sync providing this Asset.
-	 */
-	Sync source();
 
 	/**
-	 * @return The Asset name.
+	 * @return The Index containing this Asset.
 	 */
-	String name();
+	Index getIndex();
 
 	/**
-	 * @return The Asset size in bytes.
+	 * @return The asset name.
+	 */
+	String getName();
+
+	/**
+	 * @return The asset size in bytes.
 	 */
 	long size();
 
 	/**
-	 * @return True if the Asset is a directory, false otherwise.
+	 * @return True if the asset represents a directory, false otherwise.
 	 */
 	boolean isDirectory();
 }

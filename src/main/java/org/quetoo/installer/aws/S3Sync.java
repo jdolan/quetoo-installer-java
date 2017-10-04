@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -14,21 +15,22 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.quetoo.installer.Asset;
+import org.quetoo.installer.Delta;
+import org.quetoo.installer.Index;
 import org.quetoo.installer.Sync;
 
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.functions.Predicate;
 
 /**
  * Synchronizes a local file system destination with an S3 bucket.
  * 
  * @author jdolan
  */
-public class S3BucketSync implements Sync {
-
+public class S3Sync implements Sync {
+	
 	/**
-	 * A builder for creating {@link S3BucketSync} instances.
+	 * A builder for creating {@link S3Sync} instances.
 	 */
 	public static class Builder {
 
@@ -68,8 +70,8 @@ public class S3BucketSync implements Sync {
 			return this;
 		}
 
-		public S3BucketSync build() {
-			return new S3BucketSync(this);
+		public S3Sync build() {
+			return new S3Sync(this);
 		}
 	}
 
@@ -80,11 +82,11 @@ public class S3BucketSync implements Sync {
 	private final File destination;
 
 	/**
-	 * Instantiates an {@link S3BucketSync} with the given Builder.
+	 * Instantiates an {@link S3Sync} with the given Builder.
 	 * 
 	 * @param builder The Builder.
 	 */
-	private S3BucketSync(final Builder builder) {
+	private S3Sync(final Builder builder) {
 
 		httpClient = builder.httpClient;
 		bucketName = builder.bucketName;
@@ -181,23 +183,25 @@ public class S3BucketSync implements Sync {
 	}
 
 	@Override
-	public Observable<Asset> read() {
-		return Single.fromCallable(() -> new S3Bucket(this, executeHttpRequest("", S3::getDocument)))
-				.flatMapObservable(Observable::fromIterable)
-				.filter(predicate)
-				.map(obj -> (Asset) obj);
+	public Single<Index> index() {
+		return Single.fromCallable(() ->
+			new S3Bucket(this, executeHttpRequest("", S3::getDocument)).filter(predicate)
+		);
 	}
 
 	@Override
-	public Observable<Asset> delta() {
-		return read().map(asset -> (S3Object) asset)
+	public Single<Delta> delta(final Index index) {
+		return Observable.fromIterable(index)
+				.map(asset -> (S3Object) asset)
 				.filter(this::delta)
-				.map(obj -> (Asset) obj);
+				.toList()
+				.map(objects -> new S3Delta((S3Bucket) index, objects));
 	}
 
 	@Override
-	public Observable<File> sync() {
-		return delta().map(asset -> (S3Object) asset)
+	public Observable<File> sync(final Delta delta) {
+		return Observable.fromIterable(delta)
+				.map(asset -> (S3Object) asset)
 				.map(this::sync);
 	}
 

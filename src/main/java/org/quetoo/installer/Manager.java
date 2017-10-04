@@ -3,10 +3,11 @@ package org.quetoo.installer;
 import java.io.File;
 
 import org.apache.commons.io.FileUtils;
-import org.quetoo.installer.aws.S3BucketSync;
+import org.quetoo.installer.aws.S3Sync;
 
 import io.reactivex.Completable;
 import io.reactivex.Observable;
+import io.reactivex.Single;
 
 /**
  * The manager.
@@ -16,7 +17,7 @@ import io.reactivex.Observable;
 public class Manager {
 	
 	private final Config config;
-	private final Observable<S3BucketSync> syncs;
+	private final Sync quetoo, quetooData;
 		
 	/**
 	 * Instantiates a {@link Manager} with the specified {@link Config}.
@@ -26,38 +27,50 @@ public class Manager {
 	public Manager(final Config config) {
 		this.config = config;
 		
-		syncs = Observable.fromArray(
-			new S3BucketSync.Builder()
+		quetoo = new S3Sync.Builder()
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo")
 				.withPredicate(s -> s.getKey().startsWith(config.getArchHostPrefix()))
 				.withMapper(s -> new File(s.getKey().replace(config.getArchHostPrefix(), "")))
 				.withDestination(config.getDir())
-				.build(),
+				.build();
 				
-			new S3BucketSync.Builder()
+		quetooData = new S3Sync.Builder()
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo-data")
 				.withPredicate(s -> true)
 				.withMapper(s -> new File(s.getKey()))
 				.withDestination(config.getShare())
-				.build()
-		);
+				.build();
 	}
 	
 	/**
+	 * Fetches the merged indices from the configured {@link Sync}s.
 	 * 
-	 * @return An Observable yielding the aggregate delta result.
+	 * @return The merged indices.
 	 */
-	public Observable<Asset> delta() {
-		return Observable.merge(syncs.map(Sync::delta));
+	public Observable<Index> index() {
+		return Single.merge(quetoo.index(), quetooData.index()).toObservable();
+	}
+	
+	/**
+	 * Calculates the merged delta from the given indices.
+	 * 
+	 * @param indices The merged indices.
+	 * @return The merged deltas.
+	 */
+	public Observable<Delta> delta(final Observable<Index> indices) {
+		return indices.flatMapSingle(index -> index.getSync().delta(index));
 	}
 
 	/**
-	 * @return An Observable yielding the aggregate sync result.
+	 * Synchronizes the destination directory using the given merged deltas.
+	 * 
+	 * @param deltas The merged deltas.
+	 * @return An Observable yielding the synchronized files.
 	 */
-	public Observable<File> sync() {
-		return Observable.merge(syncs.map(Sync::sync))
+	public Observable<File> sync(final Observable<Delta> deltas) {
+		return deltas.flatMap(delta -> delta.getIndex().getSync().sync(delta))
 				.doOnNext(file -> {
 					if (file.getParentFile().equals(config.getBin())) {
 						file.setExecutable(true);
@@ -66,12 +79,14 @@ public class Manager {
 	}
 
 	/**
-	 * Prunes the destination directory, purging files not present in the configured Syncs.
+	 * Prunes the destination directory, purging files not present in the specified indices.
 	 * 
-	 * @return A Completable yielding the prune.
+	 * @param indices The merged indices.
+	 * @return An Observable yielding the pruned files.
 	 */
-	public Completable prune() {
-		return Observable.merge(syncs.map(sync -> sync.read().map(sync::map)))
+	public Observable<File> prune(final Observable<Index> indices) {
+		return indices.flatMapIterable(index -> index)
+				.map(asset -> asset.getIndex().getSync().map(asset))
 				.toList()
 				.doOnSuccess(files -> {
 					if (config.getPrune()) {
@@ -81,7 +96,7 @@ public class Manager {
 							FileUtils.deleteQuietly(file);
 						});
 					}
-				}).toCompletable();
+				}).flatMapObservable(Observable::fromIterable);
 	}
 	
 	/**

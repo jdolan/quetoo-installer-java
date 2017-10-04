@@ -4,7 +4,7 @@ import static org.quetoo.installer.aws.S3.getLong;
 import static org.quetoo.installer.aws.S3.getString;
 
 import org.quetoo.installer.Asset;
-import org.quetoo.installer.Sync;
+import org.quetoo.installer.Index;
 import org.w3c.dom.Node;
 
 /**
@@ -18,19 +18,19 @@ public class S3Object implements Asset {
 	private static final String ETAG = "ETag";
 	private static final String SIZE = "Size";
 
-	private final S3BucketSync s3BucketSync;
+	private final S3Bucket bucket;
 	private final String key;
 	private final String etag;
 	private final long size;
 
 	/**
-	 * Instantiates an {@link S3Object} from the given XML node.
+	 * Instantiates an S3Object from the given XML node.
 	 * 
-	 * @param s3BucketSync The {@link S3BucketSync}.
+	 * @param bucket The bucket containing this object.
 	 * @param node A `Contents` node of an S3 bucket listing.
 	 */
-	public S3Object(final S3BucketSync s3BucketSync, final Node node) {
-		this.s3BucketSync = s3BucketSync;
+	public S3Object(final S3Bucket bucket, final Node node) {
+		this.bucket = bucket;
 
 		key = getString(node, KEY);
 		etag = getString(node, ETAG).replaceAll("\"", "");
@@ -38,12 +38,12 @@ public class S3Object implements Asset {
 	}
 
 	@Override
-	public Sync source() {
-		return getS3BucketSync();
+	public Index getIndex() {
+		return getBucket();
 	}
 
 	@Override
-	public String name() {
+	public String getName() {
 		return getKey();
 	}
 
@@ -62,8 +62,8 @@ public class S3Object implements Asset {
 		return key;
 	}
 
-	public S3BucketSync getS3BucketSync() {
-		return s3BucketSync;
+	public S3Bucket getBucket() {
+		return bucket;
 	}
 
 	public String getKey() {

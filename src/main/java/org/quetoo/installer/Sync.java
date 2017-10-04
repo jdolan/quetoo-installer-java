@@ -4,40 +4,43 @@ import java.io.Closeable;
 import java.io.File;
 
 import io.reactivex.Observable;
+import io.reactivex.Single;
 
 /**
- * Syncs synchronize a local directory with a remote one.
+ * A {@link Sync} synchronizes a local file structure with a remote source.
  * 
  * @author jdolan
  */
 public interface Sync extends Closeable {
 
 	/**
-	 * Maps the specified Asset to a File.
+	 * Maps the specified {@link Asset} to a File.
 	 * 
-	 * @param asset The Asset.
+	 * @param asset The {@link Asset}.
 	 * @return The File.
 	 */
 	File map(Asset asset);
 
 	/**
-	 * Reads the remote source.
+	 * Resolves the contents of the {@link Sync}.
 	 * 
-	 * @return An Observable yielding the contents of the source.
+	 * @return A Single emitting the Index.
 	 */
-	Observable<Asset> read();
+	Single<Index> index();
 
 	/**
-	 * Performs a delta comparison of the remote source.
+	 * Performs a delta comparison of the {@link Sync}.
 	 * 
-	 * @return An Observable yielding the delta result.
+	 * @param index The Index from which to derive the delta.
+	 * @return A Single emitting the delta.
 	 */
-	Observable<Asset> delta();
+	Single<Delta> delta(Index index);
 
 	/**
-	 * Synchronizes the remote source to the configured destination.
+	 * Synchronizes configured destination directory.
 	 * 
-	 * @return An Observable yielding the Files synchronized from the remote source.
+	 * @param delta The delta from which to synchronize {@link Asset}s.
+	 * @return An Observable emitting the modified Files.
 	 */
-	Observable<File> sync();
+	Observable<File> sync(Delta delta);
 }

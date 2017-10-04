@@ -23,6 +23,7 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultCaret;
 
+import io.reactivex.Observable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
@@ -114,37 +115,29 @@ public class Panel extends JPanel {
 		subscriptions.stream().forEach(Disposable::dispose);
 		subscriptions.clear();
 	}
-	
-	/**
-	 * Dispatches {@link Manager#delta()}.
-	 */
-	public void delta() {
-				
-		progressBar.setValue(0);
-		progressBar.setIndeterminate(true);
-		
-		Schedulers.io().scheduleDirect(() -> {
-			final Disposable delta = manager.delta()
-					.toList()
-					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
-					.subscribe(this::onDelta, this::onError);
-			subscriptions.add(delta);
-		});
-	}
 
 	/**
-	 * Dispatches {@link Manager#sync()}.
+	 * Dispatches {@link Manager#sync(Observable)}.
 	 */
-	public void sync() {
+	public void update() {
 		
 		progressBar.setValue(0);
-		progressBar.setIndeterminate(false);
+		progressBar.setMaximum(0);
+		progressBar.setIndeterminate(true);
 		
-		Schedulers.io().scheduleDirect(() -> {
-			final Disposable sync = manager.sync()
-				.observeOn(Schedulers.from(SwingUtilities::invokeLater))
-				.subscribe(this::onSync, this::onError, this::onComplete);
-			subscriptions.add(sync);
+		Schedulers.io().scheduleDirect(() -> {				
+			final Observable<File> files = manager.sync(
+				manager.delta(
+					manager.index()
+						.toList()
+						.doOnSuccess(this::onIndices)
+						.flatMapObservable(Observable::fromIterable)
+					).toList()
+					.doOnSuccess(this::onDeltas)
+					.flatMapObservable(Observable::fromIterable)
+			).observeOn(Schedulers.from(SwingUtilities::invokeLater));
+			
+			subscriptions.add(files.subscribe(this::onSync, this::onError, this::onComplete));
 		});
 	}
 
@@ -160,24 +153,36 @@ public class Panel extends JPanel {
 	}
 	
 	/**
-	 * Updates the interface components to reflect a successful delta.
+	 * Called when all indices are available.
 	 * 
-	 * @param delta The delta.
+	 * @param indices The indices.
 	 */
-	private void onDelta(final List<Asset> delta) {
+	private void onIndices(final List<Index> indices) {
 		
-		setStatus("Syncing " + delta.size() + " assets..");
+		final int indexCount = indices.stream().mapToInt(Index::count).sum();
+		setStatus("Calculating udpate for " + indexCount + " assets");
+	}
+	
+	/**
+	 * Called when the deltas are available.
+	 * 
+	 * @param deltas The deltas.
+	 */
+	private void onDeltas(final List<Delta> deltas) {
 		
-		progressBar.setValue(0);
-		progressBar.setMaximum((int) delta.stream().mapToLong(Asset::size).sum());
+		final int deltaCount = deltas.stream().mapToInt(Delta::count).sum();
+		final long deltaSize = deltas.stream().mapToLong(Delta::size).sum();
 		
-		sync();
+		setStatus("Updating " + deltaCount + " assets, " + deltaSize + " bytes");	
+		
+		progressBar.setIndeterminate(false);
+		progressBar.setMaximum((int) deltaSize);		
 	}
 
 	/**
-	 * Updates the interface components to reflect the newly synced File.
+	 * Called when each File is synchronized.
 	 * 
-	 * @param file The newly synced File.
+	 * @param file The File.
 	 */
 	private void onSync(final File file) {
 		
@@ -190,7 +195,7 @@ public class Panel extends JPanel {
 	}
 
 	/**
-	 * Updates the interface components to reflect the error.
+	 * Called when an error occurs.
 	 * 
 	 * @param throwable The error.
 	 */
@@ -205,7 +210,7 @@ public class Panel extends JPanel {
 	}
 
 	/**
-	 * Updates the interface components to reflect completion.
+	 * Called when the sync operation completes successfully.
 	 */
 	private void onComplete() {
 		setStatus("Update complete");
