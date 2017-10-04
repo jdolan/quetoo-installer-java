@@ -56,11 +56,11 @@ public class S3SyncTest {
 
 		assertEquals(sync, delta.getIndex().getSync());
 
-		// delta.forEach(System.out::println);
+		 delta.forEach(System.out::println);
 
 		final List<File> files = sync.sync(delta).toList().blockingGet();
 
 		assertNotNull(files);
-		assertEquals(delta.size(), files.size());
+		assertEquals(delta.count(), files.size());
 	}
 }
