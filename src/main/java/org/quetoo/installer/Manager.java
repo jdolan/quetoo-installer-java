@@ -1,6 +1,7 @@
 package org.quetoo.installer;
 
 import java.io.File;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.quetoo.installer.aws.S3Sync;
@@ -80,22 +81,22 @@ public class Manager {
 	/**
 	 * Prunes the destination directory, purging files not present in the specified indices.
 	 * 
-	 * @param indices The merged indices.
 	 * @return An Observable yielding the pruned files.
 	 */
-	public Observable<File> prune(final Observable<Index> indices) {
-		return indices.flatMapIterable(index -> index)
+	public Observable<File> prune() {
+		return index().flatMapIterable(index -> index)
 				.map(asset -> asset.getIndex().getSync().map(asset))
 				.toList()
-				.doOnSuccess(files -> {
+				.map(files ->
+					FileUtils.listFiles(config.getDir(), null, true).stream()
+						.filter(file -> !files.contains(file))
+						.collect(Collectors.toList()))
+				.flatMapObservable(Observable::fromIterable)
+				.doOnNext(file -> {
 					if (config.getPrune()) {
-						FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
-							return !files.contains(file);
-						}).forEach(file -> {
-							FileUtils.deleteQuietly(file);
-						});
+						FileUtils.deleteQuietly(file);
 					}
-				}).flatMapObservable(Observable::fromIterable);
+				});
 	}
 	
 	/**

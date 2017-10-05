@@ -159,8 +159,8 @@ public class Panel extends JPanel {
 	 */
 	private void onIndices(final List<Index> indices) {
 
-		final int indexCount = indices.stream().mapToInt(Index::count).sum();
-		setStatus("Calculating udpate for " + indexCount + " assets");
+		final int count = indices.stream().mapToInt(Index::count).sum();
+		setStatus("Calculating udpate for " + count + " assets");
 	}
 
 	/**
@@ -170,13 +170,13 @@ public class Panel extends JPanel {
 	 */
 	private void onDeltas(final List<Delta> deltas) {
 
-		final int deltaCount = deltas.stream().mapToInt(Delta::count).sum();
-		final long deltaSize = deltas.stream().mapToLong(Delta::size).sum();
+		final int count = deltas.stream().mapToInt(Delta::count).sum();
+		final long size = deltas.stream().mapToLong(Delta::size).sum();
 
-		setStatus("Updating " + deltaCount + " assets, " + deltaSize + " bytes");
+		setStatus("Updating " + count + " assets, " + size + " bytes");
 
 		progressBar.setIndeterminate(false);
-		progressBar.setMaximum((int) deltaSize);
+		progressBar.setMaximum((int) size);
 	}
 
 	/**
@@ -213,9 +213,36 @@ public class Panel extends JPanel {
 	 * Called when the sync operation completes successfully.
 	 */
 	private void onComplete() {
+		
 		setStatus("Update complete");
+		
 		progressBar.setValue(progressBar.getMaximum());
+		
 		cancel.setEnabled(false);
+		
+		Schedulers.io().scheduleDirect(() -> {
+			final Disposable prune = manager.prune()
+					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
+					.subscribe(this::onPrune, this::onError);
+			subscriptions.add(prune);
+		});
+	}
+	
+	/**
+	 * Called when each File is pruned.
+	 * 
+	 * @param file The File.
+	 */
+	private void onPrune(final File file) {
+		
+		final String dir = manager.getConfig().getDir() + File.separator;
+		final String filename = file.toString().replace(dir, "");
+		
+		if (manager.getConfig().getPrune()) {
+			setStatus("Removed unknown asset " + filename);
+		} else {
+			setStatus("Unknown asset " + filename);
+		}
 	}
 
 	/**

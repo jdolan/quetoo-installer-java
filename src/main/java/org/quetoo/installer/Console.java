@@ -24,13 +24,13 @@ public class Console {
 	 */
 	public Console(final Manager manager) {
 		this.manager = manager;
-		sync();
+		update();
 	}
 
 	/**
 	 * Dispatches {@link Manager#sync(Observable))}.
 	 */
-	private void sync() {
+	private void update() {
 		
 		System.out.println("Updating " + manager.getConfig().getDir());
 		
@@ -55,8 +55,8 @@ public class Console {
 	 */
 	private void onIndices(final List<Index> indices) {
 		
-		final int indexCount = indices.stream().mapToInt(Index::count).sum();
-		System.out.println("Calculating update for " + indexCount + " assets");
+		final int count = indices.stream().mapToInt(Index::count).sum();
+		System.out.println("Calculating update for " + count + " assets");
 	}
 	
 	/**
@@ -66,10 +66,10 @@ public class Console {
 	 */
 	private void onDeltas(final List<Delta> deltas) {
 		
-		final int deltaCount = deltas.stream().mapToInt(Delta::count).sum();
-		final long deltaSize = deltas.stream().mapToLong(Delta::size).sum();
+		final int count = deltas.stream().mapToInt(Delta::count).sum();
+		final long size = deltas.stream().mapToLong(Delta::size).sum();
 		
-		System.out.println("Updating " + deltaCount + " assets, " + deltaSize + " bytes");
+		System.out.println("Updating " + count + " assets, " + size + " bytes");
 	}
 	
 	/**
@@ -99,6 +99,26 @@ public class Console {
 	 * Called when the sync operation completes successfully.
 	 */
 	private void onComplete() {
+		
 		System.out.println("Update complete");
+
+		manager.prune().subscribe(this::onPrune, this::onError);
+	}
+	
+	/**
+	 * Called when each File is pruned.
+	 * 
+	 * @param file The File.
+	 */
+	private void onPrune(final File file) {
+		
+		final String dir = manager.getConfig().getDir() + File.separator;
+		final String filename = file.toString().replace(dir, "");
+		
+		if (manager.getConfig().getPrune()) {
+			System.out.println("Removed unknown asset " + filename);
+		} else {
+			System.out.println("Unknown asset " + filename);
+		}
 	}
 }
