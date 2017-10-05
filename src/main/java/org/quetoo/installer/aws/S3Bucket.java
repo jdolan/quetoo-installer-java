@@ -5,48 +5,76 @@ import static org.quetoo.installer.aws.S3.getString;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import org.quetoo.installer.Asset;
+import org.quetoo.installer.Index;
+import org.quetoo.installer.Sync;
 import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 
 /**
  * An abstraction for the parsed XML contents of an AWS S3 bucket.
  * 
  * @author jdolan
  */
-public class S3Bucket implements Iterable<S3Object> {
+public class S3Bucket implements Index {
 
 	private static final String NAME = "Name";
 	private static final String CONTENTS = "Contents";
 
+	private final S3Sync sync;
 	private final String name;
 	private final List<S3Object> objects;
 
 	/**
 	 * Instantiates a new {@link S3Bucket} from the given XML document.
 	 * 
+	 * @param sync The {@link S3Sync}.
 	 * @param doc A parsed S3 bucket listing (e.g. `http://quetoo.s3.amazonaws.com/`).
 	 */
-	public S3Bucket(final Document doc) {
+	public S3Bucket(final S3Sync sync, final Document doc) {
+		this.sync = sync;
+
 		name = getString(doc.getDocumentElement(), NAME);
 
-		final Stream<Node> contents = getChildNodes(doc.getDocumentElement(), CONTENTS);
-		objects = contents.map(S3Object::new).collect(Collectors.toList());
+		objects = getChildNodes(doc.getDocumentElement(), CONTENTS)
+				.map(node -> new S3Object(this, node))
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Filters this bucket with the given predicate.
+	 * 
+	 * @param predicate The Predicate.
+	 * @return The {@link S3Bucket}.
+	 */
+	public S3Bucket filter(final Predicate<S3Object> predicate) {
+		objects.removeIf(predicate.negate());
+		return this;
 	}
 
 	@Override
-	public Iterator<S3Object> iterator() {
-		return objects.iterator();
+	public Iterator<Asset> iterator() {
+		return objects.stream().map(obj -> (Asset) obj).iterator();
+	}
+
+	@Override
+	public int count() {
+		return getObjects().size();
+	}
+
+	@Override
+	public Sync getSync() {
+		return getS3Sync();
+	}
+
+	public S3Sync getS3Sync() {
+		return sync;
 	}
 
 	public String getName() {
 		return name;
-	}
-	
-	public Integer getSize() {
-		return getObjects().stream().mapToInt(S3Object::getSize).sum();
 	}
 
 	public List<S3Object> getObjects() {

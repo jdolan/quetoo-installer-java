@@ -7,9 +7,11 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -18,7 +20,12 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultCaret;
+
+import io.reactivex.Observable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * The primary container of the user interface.
@@ -34,7 +41,8 @@ public class Panel extends JPanel {
 	private final JLabel status;
 	private final JTextArea summary;
 	private final JButton copySummary;
-	private final JButton cancel;
+
+	private final List<Disposable> subscriptions = Collections.synchronizedList(new ArrayList<>());
 
 	/**
 	 * Instantiates a {@link Panel} with the specified {@link Manager}.
@@ -51,16 +59,16 @@ public class Panel extends JPanel {
 		progressBar.setValue(0);
 		progressBar.setStringPainted(true);
 
-		status = new JLabel("Retrieving objects list..");
+		status = new JLabel("Retrieving asset list..");
 
 		summary = new JTextArea(10, 40);
 		summary.setMargin(new Insets(5, 5, 5, 5));
 		summary.setEditable(false);
-		
+
 		summary.append("Updating " + manager.getConfig().getDir() + "\n");
 
 		final String prefix = manager.getConfig().getArchHostPrefix();
-		summary.append("Retrieving objects list for " + prefix + "..\n");
+		summary.append("Retrieving asset list for " + prefix + "..\n");
 
 		DefaultCaret caret = (DefaultCaret) summary.getCaret();
 		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
@@ -86,28 +94,46 @@ public class Panel extends JPanel {
 			copySummary = new JButton("Copy Summary");
 			copySummary.addActionListener(this::onCopySummary);
 
-			cancel = new JButton("Cancel");
-			cancel.addActionListener(this::onCancel);
-
 			panel = new JPanel();
-			panel.add(copySummary, BorderLayout.WEST);
-			panel.add(cancel, BorderLayout.EAST);
+			panel.add(copySummary, BorderLayout.EAST);
 
 			add(panel, BorderLayout.PAGE_END);
 		}
 
 		setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 	}
+	
+	/**
+	 * Cancels all pending subscriptions.
+	 */
+	public void cancel() {
+		subscriptions.stream().forEach(Disposable::dispose);
+		subscriptions.clear();
+	}
 
 	/**
-	 * Dispatches {@link Manager#sync()}.
+	 * Dispatches {@link Manager#sync(Observable)}.
 	 */
-	public void sync() {
-		try {
-			manager.sync().subscribe(this::onSync, this::onError, this::onComplete);
-		} catch (IOException ioe) {
-			onError(ioe);
-		}
+	public void update() {
+		
+		progressBar.setValue(0);
+		progressBar.setMaximum(0);
+		progressBar.setIndeterminate(true);
+
+		Schedulers.io().scheduleDirect(() -> {				
+			final Observable<File> files = manager.sync(
+				manager.delta(
+					manager.index()
+						.toList()
+						.doOnSuccess(this::onIndices)
+						.flatMapObservable(Observable::fromIterable)
+					).toList()
+					.doOnSuccess(this::onDeltas)
+					.flatMapObservable(Observable::fromIterable)
+			).observeOn(Schedulers.from(SwingUtilities::invokeLater));
+
+			subscriptions.add(files.subscribe(this::onSync, this::onError, this::onComplete));
+		});
 	}
 
 	/**
@@ -122,22 +148,49 @@ public class Panel extends JPanel {
 	}
 
 	/**
-	 * Updates the interface components to reflect the newly synced File.
+	 * Called when all indices are available.
 	 * 
-	 * @param file The newly synced File.
+	 * @param indices The indices.
+	 */
+	private void onIndices(final List<Index> indices) {
+
+		final int count = indices.stream().mapToInt(Index::count).sum();
+		setStatus("Calculating udpate for " + count + " assets");
+	}
+
+	/**
+	 * Called when the deltas are available.
+	 * 
+	 * @param deltas The deltas.
+	 */
+	private void onDeltas(final List<Delta> deltas) {
+
+		final int count = deltas.stream().mapToInt(Delta::count).sum();
+		final long size = deltas.stream().mapToLong(Delta::size).sum();
+
+		setStatus("Updating " + count + " assets, " + size + " bytes");
+
+		progressBar.setIndeterminate(false);
+		progressBar.setMaximum(Math.max((int) size, 1));
+	}
+
+	/**
+	 * Called when each File is synchronized.
+	 * 
+	 * @param file The File.
 	 */
 	private void onSync(final File file) {
+
+		progressBar.setValue(progressBar.getValue() + (int) file.length());
 
 		final String dir = manager.getConfig().getDir() + File.separator;
 		final String filename = file.toString().replace(dir, "");
 
 		setStatus(filename);
-
-		progressBar.setValue(progressBar.getValue() + 1);
 	}
 
 	/**
-	 * Updates the interface components to reflect the error.
+	 * Called when an error occurs.
 	 * 
 	 * @param throwable The error.
 	 */
@@ -152,12 +205,37 @@ public class Panel extends JPanel {
 	}
 
 	/**
-	 * Updates the interface components to reflect completion.
+	 * Called when the sync operation completes successfully.
 	 */
 	private void onComplete() {
+		
 		setStatus("Update complete");
+		
 		progressBar.setValue(progressBar.getMaximum());
-		cancel.setEnabled(false);
+				
+		Schedulers.io().scheduleDirect(() -> {
+			final Disposable prune = manager.prune()
+					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
+					.subscribe(this::onPrune, this::onError);
+			subscriptions.add(prune);
+		});
+	}
+	
+	/**
+	 * Called when each File is pruned.
+	 * 
+	 * @param file The File.
+	 */
+	private void onPrune(final File file) {
+		
+		final String dir = manager.getConfig().getDir() + File.separator;
+		final String filename = file.toString().replace(dir, "");
+		
+		if (manager.getConfig().getPrune()) {
+			setStatus("Removed unknown asset " + filename);
+		} else {
+			setStatus("Unknown asset " + filename);
+		}
 	}
 
 	/**
@@ -166,13 +244,5 @@ public class Panel extends JPanel {
 	private void onCopySummary(final ActionEvent e) {
 		final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 		clipboard.setContents(new StringSelection(summary.getText()), null);
-	}
-
-	/**
-	 * Cancels the sync operation.
-	 */
-	private void onCancel(final ActionEvent e) {
-		setStatus("Cancelling..");
-		manager.cancel();
 	}
 }

@@ -1,41 +1,46 @@
 package org.quetoo.installer;
 
+import java.io.Closeable;
 import java.io.File;
-import java.io.IOException;
 
 import io.reactivex.Observable;
+import io.reactivex.Single;
 
 /**
- * Syncs synchronize a local directory with a remote one.
+ * A {@link Sync} synchronizes a local file structure with a remote source.
  * 
  * @author jdolan
  */
-public interface Sync {
-	
+public interface Sync extends Closeable {
+
 	/**
-	 * A listener interface for the Sync.
-	 */
-	interface Listener {
-		
-		/**
-		 * Called when the Sync source has been read to setup progress reporting.
-		 * 
-		 * @param count The number of items to sync.
-		 * @param size The total size of the items to sync in bytes.
-		 */
-		void onRead(int count, int size);	
-	}
-		
-	/**
-	 * Cancels any pending sync operation.
-	 */
-	void cancel();
-	
-	/**
-	 * Synchronizes the remote source to the configured destination.
+	 * Maps the specified {@link Asset} to a File.
 	 * 
-	 * @return A List of all Files synchronized from the remote source.
-	 * @throws IOException If an error occurs.
+	 * @param asset The {@link Asset}.
+	 * @return The File.
 	 */
-	Observable<File> sync() throws IOException;
+	File map(Asset asset);
+
+	/**
+	 * Resolves the contents of the {@link Sync}.
+	 * 
+	 * @return A Single emitting the Index.
+	 */
+	Single<Index> index();
+
+	/**
+	 * Performs a delta comparison of the {@link Sync}.
+	 * 
+	 * @param index The Index from which to derive the delta.
+	 * @return A Single emitting the delta.
+	 */
+	Single<Delta> delta(Index index);
+
+	/**
+	 * Synchronizes configured destination directory.
+	 * 
+	 * @param delta The delta from which to synchronize {@link Asset}s.
+	 * @return An Observable emitting the modified Files.
+	 */
+	Observable<File> sync(Delta delta);
 }

@@ -1,26 +1,23 @@
 package org.quetoo.installer;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
-import org.quetoo.installer.aws.S3BucketSync;
+import org.quetoo.installer.aws.S3Sync;
 
 import io.reactivex.Observable;
+import io.reactivex.Single;
 
 /**
- * The update manager.
+ * The manager.
  * 
  * @author jdolan
  */
 public class Manager {
 	
 	private final Config config;
-
-	private final Observable<Sync> syncs;
-	
-	private Boolean isCancelled;
+	private final Sync quetoo, quetooData;
 		
 	/**
 	 * Instantiates a {@link Manager} with the specified {@link Config}.
@@ -30,81 +27,76 @@ public class Manager {
 	public Manager(final Config config) {
 		this.config = config;
 		
-		syncs = Observable.fromArray(
-				
-			new S3BucketSync.Builder()
+		quetoo = new S3Sync.Builder()
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo")
 				.withPredicate(s -> s.getKey().startsWith(config.getArchHostPrefix()))
 				.withMapper(s -> new File(s.getKey().replace(config.getArchHostPrefix(), "")))
 				.withDestination(config.getDir())
-				.build(),
+				.build();
 				
-			new S3BucketSync.Builder()
+		quetooData = new S3Sync.Builder()
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo-data")
 				.withPredicate(s -> true)
 				.withMapper(s -> new File(s.getKey()))
 				.withDestination(config.getShare())
-				.build()
-		);
+				.build();
 	}
 	
 	/**
-	 * Modifies permissions on the newly synced File.
+	 * Fetches the merged indices from the configured {@link Sync}s.
 	 * 
-	 * @param file The newly synced File.
-	 * @return The File.
+	 * @return The merged indices.
 	 */
-	private File onSync(final File file) {
-
-		if (file.getParentFile().equals(config.getBin())) {
-			file.setExecutable(true);
-		}
-		
-		return file;
+	public Observable<Index> index() {
+		return Single.merge(quetoo.index(), quetooData.index()).toObservable();
 	}
 	
 	/**
-	 * Prunes the configured directory to mirror the aggregate sync result.
+	 * Calculates the merged delta from the given indices.
 	 * 
-	 * @param files The aggregate sync result.
+	 * @param indices The merged indices.
+	 * @return The merged deltas.
 	 */
-	private void prune(List<File> files) {
-		
-		if (config.getPrune() && !isCancelled) {
-			FileUtils.listFiles(config.getDir(), null, true).stream().filter(file -> {
-				return !files.contains(file);
-			}).forEach(file -> {
-				FileUtils.deleteQuietly(file);
-				System.out.println("Pruned " + file);
-			});
-		}		
+	public Observable<Delta> delta(final Observable<Index> indices) {
+		return indices.flatMapSingle(index -> index.getSync().delta(index));
 	}
-	
+
 	/**
-	 * Cancels all pending sync operations.
-	 */
-	public void cancel() {
-		isCancelled = true;
-		syncs.forEach(Sync::cancel);
-	}
-	
-	/**
-	 * Dispatches the configured {@link Sync}s.
+	 * Synchronizes the destination directory using the given merged deltas.
 	 * 
-	 * @return An Observable of the merged {@link Sync} result.
-	 * @throws IOException If an error occurs.
+	 * @param deltas The merged deltas.
+	 * @return An Observable yielding the synchronized files.
 	 */
-	public Observable<File> sync() throws IOException {
+	public Observable<File> sync(final Observable<Delta> deltas) {
+		return deltas.flatMap(delta -> delta.getIndex().getSync().sync(delta))
+				.doOnNext(file -> {
+					if (file.getParentFile().equals(config.getBin())) {
+						file.setExecutable(true);
+					}
+				});
+	}
 
-		Observable<File> files = Observable.merge(syncs.map(Sync::sync))
-										   .map(this::onSync)
-										   .share();
-
-		files.toList().subscribe(this::prune);
-
-		return files;
+	/**
+	 * Prunes the destination directory, purging files not present in the specified indices.
+	 * 
+	 * @return An Observable yielding the pruned files.
+	 */
+	public Observable<File> prune() {
+		return index().flatMapIterable(index -> index)
+				.map(asset -> asset.getIndex().getSync().map(asset))
+				.toList()
+				.map(files ->
+					FileUtils.listFiles(config.getDir(), null, true).stream()
+						.filter(file -> !files.contains(file))
+						.collect(Collectors.toList()))
+				.flatMapObservable(Observable::fromIterable)
+				.doOnNext(file -> {
+					if (config.getPrune()) {
+						FileUtils.deleteQuietly(file);
+					}
+				});
 	}
 	
 	/**
