@@ -60,7 +60,7 @@ public class Panel extends JPanel {
 		progressBar.setValue(0);
 		progressBar.setStringPainted(true);
 
-		status = new JLabel("Retrieving objects list..");
+		status = new JLabel("Retrieving asset list..");
 
 		summary = new JTextArea(10, 40);
 		summary.setMargin(new Insets(5, 5, 5, 5));
@@ -69,7 +69,7 @@ public class Panel extends JPanel {
 		summary.append("Updating " + manager.getConfig().getDir() + "\n");
 
 		final String prefix = manager.getConfig().getArchHostPrefix();
-		summary.append("Retrieving objects list for " + prefix + "..\n");
+		summary.append("Retrieving asset list for " + prefix + "..\n");
 
 		DefaultCaret caret = (DefaultCaret) summary.getCaret();
 		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
