@@ -41,7 +41,6 @@ public class Panel extends JPanel {
 	private final JLabel status;
 	private final JTextArea summary;
 	private final JButton copySummary;
-	private final JButton cancel;
 
 	private final List<Disposable> subscriptions = Collections.synchronizedList(new ArrayList<>());
 
@@ -95,12 +94,8 @@ public class Panel extends JPanel {
 			copySummary = new JButton("Copy Summary");
 			copySummary.addActionListener(this::onCopySummary);
 
-			cancel = new JButton("Cancel");
-			cancel.addActionListener(this::onCancel);
-
 			panel = new JPanel();
-			panel.add(copySummary, BorderLayout.WEST);
-			panel.add(cancel, BorderLayout.EAST);
+			panel.add(copySummary, BorderLayout.EAST);
 
 			add(panel, BorderLayout.PAGE_END);
 		}
@@ -217,9 +212,7 @@ public class Panel extends JPanel {
 		setStatus("Update complete");
 		
 		progressBar.setValue(progressBar.getMaximum());
-		
-		cancel.setEnabled(false);
-		
+				
 		Schedulers.io().scheduleDirect(() -> {
 			final Disposable prune = manager.prune()
 					.observeOn(Schedulers.from(SwingUtilities::invokeLater))
@@ -251,13 +244,5 @@ public class Panel extends JPanel {
 	private void onCopySummary(final ActionEvent e) {
 		final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 		clipboard.setContents(new StringSelection(summary.getText()), null);
-	}
-
-	/**
-	 * Cancels the sync operation.
-	 */
-	private void onCancel(final ActionEvent e) {
-		setStatus("Cancelling..");
-		cancel();
 	}
 }
