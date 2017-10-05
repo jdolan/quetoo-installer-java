@@ -124,7 +124,7 @@ public class Panel extends JPanel {
 		progressBar.setValue(0);
 		progressBar.setMaximum(0);
 		progressBar.setIndeterminate(true);
-		
+
 		Schedulers.io().scheduleDirect(() -> {				
 			final Observable<File> files = manager.sync(
 				manager.delta(
@@ -136,7 +136,7 @@ public class Panel extends JPanel {
 					.doOnSuccess(this::onDeltas)
 					.flatMapObservable(Observable::fromIterable)
 			).observeOn(Schedulers.from(SwingUtilities::invokeLater));
-			
+
 			subscriptions.add(files.subscribe(this::onSync, this::onError, this::onComplete));
 		});
 	}
@@ -151,32 +151,32 @@ public class Panel extends JPanel {
 		status.setText(string);
 		summary.append(string + "\n");
 	}
-	
+
 	/**
 	 * Called when all indices are available.
 	 * 
 	 * @param indices The indices.
 	 */
 	private void onIndices(final List<Index> indices) {
-		
+
 		final int indexCount = indices.stream().mapToInt(Index::count).sum();
 		setStatus("Calculating udpate for " + indexCount + " assets");
 	}
-	
+
 	/**
 	 * Called when the deltas are available.
 	 * 
 	 * @param deltas The deltas.
 	 */
 	private void onDeltas(final List<Delta> deltas) {
-		
+
 		final int deltaCount = deltas.stream().mapToInt(Delta::count).sum();
 		final long deltaSize = deltas.stream().mapToLong(Delta::size).sum();
-		
-		setStatus("Updating " + deltaCount + " assets, " + deltaSize + " bytes");	
-		
+
+		setStatus("Updating " + deltaCount + " assets, " + deltaSize + " bytes");
+
 		progressBar.setIndeterminate(false);
-		progressBar.setMaximum((int) deltaSize);		
+		progressBar.setMaximum((int) deltaSize);
 	}
 
 	/**
@@ -185,8 +185,8 @@ public class Panel extends JPanel {
 	 * @param file The File.
 	 */
 	private void onSync(final File file) {
-		
-		progressBar.setValue(progressBar.getValue() + (int) file.length()); 
+
+		progressBar.setValue(progressBar.getValue() + (int) file.length());
 
 		final String dir = manager.getConfig().getDir() + File.separator;
 		final String filename = file.toString().replace(dir, "");

@@ -5,7 +5,6 @@ import java.io.File;
 import org.apache.commons.io.FileUtils;
 import org.quetoo.installer.aws.S3Sync;
 
-import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 
