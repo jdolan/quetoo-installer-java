@@ -171,7 +171,7 @@ public class Panel extends JPanel {
 		setStatus("Updating " + count + " assets, " + size + " bytes");
 
 		progressBar.setIndeterminate(false);
-		progressBar.setMaximum((int) size);
+		progressBar.setMaximum(Math.max((int) size, 1));
 	}
 
 	/**
