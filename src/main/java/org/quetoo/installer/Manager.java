@@ -7,7 +7,6 @@ import org.apache.commons.io.FileUtils;
 import org.quetoo.installer.aws.S3Sync;
 
 import io.reactivex.Observable;
-import io.reactivex.Single;
 
 /**
  * The manager.
@@ -50,7 +49,7 @@ public class Manager {
 	 * @return The merged indices.
 	 */
 	public Observable<Index> index() {
-		return Single.merge(quetoo.index(), quetooData.index()).toObservable();
+		return Observable.merge(quetoo.index(), quetooData.index());
 	}
 	
 	/**

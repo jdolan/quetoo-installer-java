@@ -36,11 +36,11 @@ public class S3SyncTest {
 	}
 
 	@Test
-	public void test() {
+	public void sync() {
 
 		System.out.println("Syncing to desination " + destination);
 
-		final Index index = sync.index().blockingGet();
+		final Index index = sync.index().blockingFirst();
 
 		assertNotNull(index);
 		assertNotNull(index.iterator());
@@ -56,11 +56,25 @@ public class S3SyncTest {
 
 		assertEquals(sync, delta.getIndex().getSync());
 
-		 delta.forEach(System.out::println);
+		delta.forEach(System.out::println);
 
 		final List<File> files = sync.sync(delta).toList().blockingGet();
 
 		assertNotNull(files);
 		assertEquals(delta.count(), files.size());
+	}
+	
+	@Test
+	public void pagination() {
+		
+		new S3Sync.Builder()
+				.withHttpClient(HttpClients.createDefault())
+				.withBucketName("quetoo-data")
+				.build()
+				.index()
+				.flatMapIterable(index -> index)
+				.doOnNext(System.out::println)
+				.test()
+				.assertNoErrors().assertComplete();
 	}
 }

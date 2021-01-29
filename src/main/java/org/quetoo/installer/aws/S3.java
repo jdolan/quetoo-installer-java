@@ -92,6 +92,18 @@ public class S3 {
 			return 0L;
 		}
 	}
+	
+	/**
+	 * Parses a boolean from the named child of `node`.
+	 * 
+	 * @param node The node from which to resolve the child.
+	 * @param name The child node's local name.
+	 * 
+	 * @return The boolean representation of the child node.
+	 */
+	public static boolean getBoolean(final Node node, final String name) {
+		return Boolean.valueOf(getString(node, name));
+	}
 
 	/**
 	 * A convenience method for iterating child nodes.

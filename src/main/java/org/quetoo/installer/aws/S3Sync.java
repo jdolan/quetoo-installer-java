@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLEncoder;
+import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -13,6 +15,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.quetoo.installer.Asset;
 import org.quetoo.installer.Delta;
@@ -28,7 +31,7 @@ import io.reactivex.Single;
  * @author jdolan
  */
 public class S3Sync implements Sync {
-	
+
 	/**
 	 * A builder for creating {@link S3Sync} instances.
 	 */
@@ -96,7 +99,8 @@ public class S3Sync implements Sync {
 	}
 
 	/**
-	 * A specialized ResponseHandler for conveniently dealing with response InputStreams.
+	 * A specialized ResponseHandler for conveniently dealing with response
+	 * InputStreams.
 	 * 
 	 * @param <T> The parsed response object.
 	 */
@@ -107,20 +111,29 @@ public class S3Sync implements Sync {
 	/**
 	 * Executes an HTTP GET request for the specified path.
 	 * 
-	 * @param path The path.
+	 * @param path    The path.
+	 * @param query   The query string, or null.
 	 * @param handler The response handler.
 	 * @return The parsed response.
 	 * @throws IOException If an error occurs.
 	 */
-	private <T> T executeHttpRequest(final String path, ResponseHandler<T> handler)
-			throws IOException {
+	private <T> T executeHttpRequest(final String path, final Map<String, String> params,
+			final ResponseHandler<T> handler) throws IOException {
 
-		final String uri = "http://" + bucketName + ".s3.amazonaws.com/"
-				+ URLEncoder.encode(path, "UTF-8");
+		final URIBuilder uri = new URIBuilder()
+				.setScheme("https")
+				.setHost(bucketName + ".s3.amazonaws.com/")
+				.setPath(path);
 
-		return httpClient.execute(new HttpGet(uri), res -> {
-			return handler.handleResponse(res.getEntity().getContent());
-		});
+		params.forEach((param, value) -> uri.setParameter(param, value));
+
+		try {
+			return httpClient.execute(new HttpGet(uri.build()), res -> {
+				return handler.handleResponse(res.getEntity().getContent());
+			});
+		} catch (URISyntaxException e) {
+			throw new IOException(e);
+		}
 	}
 
 	/**
@@ -169,7 +182,7 @@ public class S3Sync implements Sync {
 			FileUtils.forceMkdir(file);
 		} else {
 			FileUtils.forceMkdirParent(file);
-			executeHttpRequest(obj.getKey(), inputStream -> {
+			executeHttpRequest(obj.getKey(), Collections.emptyMap(), inputStream -> {
 				return IOUtils.copy(inputStream, new FileOutputStream(file));
 			});
 		}
@@ -183,26 +196,40 @@ public class S3Sync implements Sync {
 	}
 
 	@Override
-	public Single<Index> index() {
-		return Single.fromCallable(() ->
-			new S3Bucket(this, executeHttpRequest("", S3::getDocument)).filter(predicate)
-		);
+	public Observable<Index> index() {
+		return Observable.create(source -> {
+
+			String marker = "";
+			while (true) {
+
+				final S3Bucket bucket = new S3Bucket(this,
+						executeHttpRequest("", Map.of("marker", marker), S3::getDocument));
+
+				if (predicate != null) {
+					source.onNext(bucket.filter(predicate));
+				} else {
+					source.onNext(bucket);
+				}
+
+				if (bucket.count() < 1000) {
+					source.onComplete();
+					break;
+				}
+
+				marker = bucket.getMarker();
+			}
+		});
 	}
 
 	@Override
 	public Single<Delta> delta(final Index index) {
-		return Observable.fromIterable(index)
-				.map(asset -> (S3Object) asset)
-				.filter(this::delta)
-				.toList()
+		return Observable.fromIterable(index).map(asset -> (S3Object) asset).filter(this::delta).toList()
 				.map(objects -> new S3Delta((S3Bucket) index, objects));
 	}
 
 	@Override
 	public Observable<File> sync(final Delta delta) {
-		return Observable.fromIterable(delta)
-				.map(asset -> (S3Object) asset)
-				.map(this::sync);
+		return Observable.fromIterable(delta).map(asset -> (S3Object) asset).map(this::sync);
 	}
 
 	@Override

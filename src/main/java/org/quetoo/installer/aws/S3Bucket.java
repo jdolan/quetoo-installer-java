@@ -80,4 +80,8 @@ public class S3Bucket implements Index {
 	public List<S3Object> getObjects() {
 		return objects;
 	}
+	
+	public String getMarker() {
+		return objects.get(objects.size() - 1).getKey();
+	}
 }

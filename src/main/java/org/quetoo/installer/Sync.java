@@ -26,7 +26,7 @@ public interface Sync extends Closeable {
 	 * 
 	 * @return A Single emitting the Index.
 	 */
-	Single<Index> index();
+	Observable<Index> index();
 
 	/**
 	 * Performs a delta comparison of the {@link Sync}.
