@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -199,11 +200,10 @@ public class S3Sync implements Sync {
 	public Observable<Index> index() {
 		return Observable.create(source -> {
 
-			String marker = "";
+			final Map<String, String> params = new HashMap<>();
 			while (true) {
 
-				final S3Bucket bucket = new S3Bucket(this,
-						executeHttpRequest("", Map.of("marker", marker), S3::getDocument));
+				final S3Bucket bucket = new S3Bucket(this, executeHttpRequest("", params, S3::getDocument));
 
 				if (predicate != null) {
 					source.onNext(bucket.filter(predicate));
@@ -216,7 +216,7 @@ public class S3Sync implements Sync {
 					break;
 				}
 
-				marker = bucket.getMarker();
+				params.put("marker", bucket.getMarker());
 			}
 		});
 	}
