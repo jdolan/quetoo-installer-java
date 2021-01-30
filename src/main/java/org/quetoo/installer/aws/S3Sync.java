@@ -223,8 +223,15 @@ public class S3Sync implements Sync {
 
 	@Override
 	public Single<Delta> delta(final Index index) {
-		return Observable.fromIterable(index).map(asset -> (S3Object) asset).filter(this::delta).toList()
-				.map(objects -> new S3Delta((S3Bucket) index, objects));
+		return Single.just(index)
+				.cast(S3Bucket.class)
+				.flatMap(bucket -> {
+					return Observable.fromIterable(bucket)
+							.cast(S3Object.class)
+							.filter(this::delta)
+							.toList()
+							.map(objects -> new S3Delta(bucket, objects));
+				});
 	}
 
 	@Override

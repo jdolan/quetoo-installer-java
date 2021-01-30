@@ -1,17 +1,13 @@
 package org.quetoo.installer.aws;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import java.io.File;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.http.impl.client.HttpClients;
-import org.junit.Before;
 import org.junit.Test;
-import org.quetoo.installer.Delta;
-import org.quetoo.installer.Index;
 
 /**
  * Integration tests for the {@link S3Sync} class.
@@ -20,61 +16,63 @@ import org.quetoo.installer.Index;
  */
 public class S3SyncTest {
 
-	private final File destination = new File(FileUtils.getTempDirectory(), "quetoo");
-
-	private final S3Sync sync = new S3Sync.Builder()
-			.withHttpClient(HttpClients.createDefault())
-			.withBucketName("quetoo")
-			.withPredicate(s -> s.getKey().contains("x86_64-apple-darwin"))
-			.withMapper(s -> new File(s.getKey().replace("x86_64-apple-darwin", "")))
-			.withDestination(destination)
-			.build();
-
-	@Before
-	public void before() {
-		FileUtils.deleteQuietly(destination);
-	}
-
 	@Test
-	public void sync() {
-
-		System.out.println("Syncing to desination " + destination);
-
-		final Index index = sync.index().blockingFirst();
-
-		assertNotNull(index);
-		assertNotNull(index.iterator());
-
-		assertEquals(sync, index.getSync());
-
-		// index.forEach(System.out::println);
-
-		final Delta delta = sync.delta(index).blockingGet();
-
-		assertNotNull(delta);
-		assertNotNull(delta.iterator());
-
-		assertEquals(sync, delta.getIndex().getSync());
-
-		delta.forEach(System.out::println);
-
-		final List<File> files = sync.sync(delta).toList().blockingGet();
-
-		assertNotNull(files);
-		assertEquals(delta.count(), files.size());
-	}
-	
-	@Test
-	public void pagination() {
+	public void quetoo() {
 		
-		new S3Sync.Builder()
+		final File destination = new File(FileUtils.getTempDirectory(), "quetoo");
+
+		System.out.println("Sync quetoo to " + destination);
+
+		FileUtils.deleteQuietly(destination);
+		
+		final S3Sync quetoo = new S3Sync.Builder()
+				.withHttpClient(HttpClients.createDefault())
+				.withBucketName("quetoo")
+				.withPredicate(s -> s.getKey().startsWith("x86_64-apple-darwin"))
+				.withMapper(s -> new File(s.getKey().replace("x86_64-apple-darwin", "")))
+				.withDestination(destination)
+				.build();
+		
+		quetoo.index()
+			.doOnNext(index -> {})
+			.flatMapSingle(quetoo::delta)
+			.doOnNext(delta -> {})
+			.flatMap(quetoo::sync)
+			.doOnNext(System.out::println)
+			.test()
+			.assertNoErrors()
+			.assertComplete();
+	}
+
+	@Test
+	public void quetooData() {
+		
+		final File destination = new File(FileUtils.getTempDirectory(), "quetoo-data");
+		
+		FileUtils.deleteQuietly(destination);
+		
+		System.out.println("Delta quetoo-data to " + destination);
+		
+		final S3Sync quetooData = new S3Sync.Builder()
 				.withHttpClient(HttpClients.createDefault())
 				.withBucketName("quetoo-data")
-				.build()
-				.index()
-				.flatMapIterable(index -> index)
-				.doOnNext(System.out::println)
+				.withMapper(s -> new File(s.getKey()))
+				.withDestination(destination)
+				.build();
+		
+		final AtomicInteger indexCount = new AtomicInteger();
+		final AtomicInteger deltaCount = new AtomicInteger();
+		
+		quetooData.index()
+				.doOnNext(index -> indexCount.addAndGet(index.count()))
+				.flatMapSingle(quetooData::delta)
+				.doOnNext(delta -> deltaCount.addAndGet(delta.count()))
 				.test()
-				.assertNoErrors().assertComplete();
+				.assertNoErrors()
+				.assertComplete();
+		
+		assertEquals(indexCount.get(), deltaCount.get());
+		
+		System.out.println("Index: " + indexCount + " Delta: " + deltaCount);
 	}
 }
