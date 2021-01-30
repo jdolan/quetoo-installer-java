@@ -184,7 +184,12 @@ public class S3Sync implements Sync {
 		} else {
 			FileUtils.forceMkdirParent(file);
 			executeHttpRequest(obj.getKey(), Collections.emptyMap(), inputStream -> {
-				return IOUtils.copy(inputStream, new FileOutputStream(file));
+				FileOutputStream out = new FileOutputStream(file);
+				try {
+					return IOUtils.copy(inputStream, new FileOutputStream(file));
+				} finally {
+					out.close();
+				}
 			});
 		}
 
