@@ -21,6 +21,7 @@ public class Config {
 
 	public static final String ARCH = "quetoo.update.arch";
 	public static final String HOST = "quetoo.update.host";
+	public static final String BUILD = "quetoo.update.build";
 	public static final String DIR = "quetoo.update.dir";
 	public static final String PRUNE = "quetoo.update.prune";
 	public static final String CONSOLE = "quetoo.update.console";
@@ -55,10 +56,15 @@ public class Config {
 		codeSource = getClass().getProtectionDomain().getCodeSource();
 		jar = FileUtils.toFile(codeSource.getLocation());
 
-		arch = Arch.getArch(properties.getProperty(ARCH, SystemUtils.OS_ARCH));
-		host = Host.getHost(properties.getProperty(HOST, SystemUtils.OS_NAME));
-
-		if (properties.getProperty(DIR) != null) {
+		if (properties.contains(BUILD)) {
+			arch = Arch.getArch(properties.getProperty(BUILD, SystemUtils.OS_ARCH));
+			host = Host.getHost(properties.getProperty(BUILD, SystemUtils.OS_NAME));
+		} else {
+			arch = Arch.getArch(properties.getProperty(ARCH, SystemUtils.OS_ARCH));
+			host = Host.getHost(properties.getProperty(HOST, SystemUtils.OS_NAME));
+		}
+		
+		if (properties.contains(DIR)) {
 			dir = new File(properties.getProperty(DIR));
 		} else {
 			dir = resolveDir();

@@ -17,11 +17,11 @@ public enum Arch {
 	 */
 	public static Arch getArch(final String string) {
 
-		if (StringUtils.equalsAny(string, "x86", "i386", "i486", "i586", "i686")) {
+		if (StringUtils.containsAny(string, "x86", "i386", "i486", "i586", "i686")) {
 			return i686;
 		}
 
-		if (StringUtils.equalsAny(string, "x86_64", "amd64")) {
+		if (StringUtils.containsAny(string, "x86_64", "amd64")) {
 			return x86_64;
 		}
 

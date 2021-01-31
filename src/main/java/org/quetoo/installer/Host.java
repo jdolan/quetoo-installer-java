@@ -17,7 +17,7 @@ public enum Host {
 	 */
 	public static Host getHost(final String string) {
 
-		if (StringUtils.containsIgnoreCase(string, "mac os x")) {
+		if (StringUtils.containsIgnoreCase(string, "apple")) {
 			return apple_darwin;
 		}
 
