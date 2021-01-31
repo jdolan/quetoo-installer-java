@@ -35,6 +35,12 @@ public class Main {
 				.argName(getDefaults().getArch().toString())
 				.desc("the architecture name")
 				.build();
+		
+		final Option build = Option.builder("b")
+				.longOpt("build")
+				.argName(getDefaults().getArchHostPrefix())
+				.desc("the build name (architecture and host)")
+				.build();
 
 		final Option host = Option.builder("h")
 				.longOpt("host")
@@ -68,6 +74,7 @@ public class Main {
 
 		options.addOption(arch);
 		options.addOption(host);
+		options.addOption(build);
 		options.addOption(dir);
 		options.addOption(prune);
 		options.addOption(console);
