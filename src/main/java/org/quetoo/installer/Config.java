@@ -17,14 +17,14 @@ import org.apache.http.impl.client.HttpClients;
 public class Config {
 
 	public static final String NAME = "Quetoo Installer";
-	public static final String VERSION = "1.0 BETA";
+	public static final String VERSION = "1.0.0";
 
-	public static final String ARCH = "quetoo.update.arch";
-	public static final String HOST = "quetoo.update.host";
-	public static final String BUILD = "quetoo.update.build";
-	public static final String DIR = "quetoo.update.dir";
-	public static final String PRUNE = "quetoo.update.prune";
-	public static final String CONSOLE = "quetoo.update.console";
+	public static final String ARCH = "quetoo.installer.arch";
+	public static final String HOST = "quetoo.installer.host";
+	public static final String BUILD = "quetoo.installer.build";
+	public static final String DIR = "quetoo.installer.dir";
+	public static final String PRUNE = "quetoo.installer.prune";
+	public static final String CONSOLE = "quetoo.installer.console";
 
 	private static final Config defaults = new Config();
 
@@ -80,21 +80,22 @@ public class Config {
 	private File resolveDir() {
 
 		if (jar != null) {
+			File parent = jar.getParentFile();
 			switch (host) {
 				case apple_darwin:
-					final String path = jar.getAbsolutePath();
-
-					if (path.contains("Quetoo.app")) {
-						return new File(path.replaceFirst("Quetoo\\.app.*", ""));
-					}
-
+					do {
+						if (parent.getName().equalsIgnoreCase("Quetoo.app")) {
+							return parent;
+						}
+						parent = parent.getParentFile();
+					} while (parent != null);
+					
 					break;
 				default:
-					final File parent = jar.getParentFile();
-
 					if (parent.getName().equalsIgnoreCase("lib")) {
 						return parent.getParentFile();
 					}
+					break;
 			}
 		}
 
@@ -146,25 +147,17 @@ public class Config {
 	public File getBin() {
 		switch (getHost()) {
 			case apple_darwin:
-				return new File(getDir(), "Quetoo.app/Contents/MacOS");
+				return new File(getDir(), "Contents/MacOS");
 			default:
 				return new File(getDir(), "bin");
 		}
 	}
 
-	public File getEtc() {
-		switch (getHost()) {
-			case apple_darwin:
-				return new File(getDir(), "Quetoo.app/Contents/MacOS/etc");
-			default:
-				return new File(getDir(), "etc");
-		}
-	}
 
 	public File getLib() {
 		switch (getHost()) {
 			case apple_darwin:
-				return new File(getDir(), "Quetoo.app/Contents/MacOS/lib");
+				return new File(getDir(), "Contents/MacOS/lib");
 			default:
 				return new File(getDir(), "lib");
 		}
@@ -173,7 +166,7 @@ public class Config {
 	public File getShare() {
 		switch (getHost()) {
 			case apple_darwin:
-				return new File(getDir(), "Quetoo.app/Contents/Resources");
+				return new File(getDir(), "Contents/Resources");
 			default:
 				return new File(getDir(), "share");
 		}

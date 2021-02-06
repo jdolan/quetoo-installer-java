@@ -85,7 +85,7 @@ public class Main {
 			final CommandLine commandLine = new DefaultParser().parse(options, args);
 			commandLine.iterator().forEachRemaining(opt -> {
 				if (commandLine.hasOption(opt.getOpt())) {
-					String key = "quetoo.update." + opt.getLongOpt();
+					String key = "quetoo.installer." + opt.getLongOpt();
 					String value = commandLine.getOptionValue(opt.getOpt());
 					if (value == null) {
 						value = "true";
