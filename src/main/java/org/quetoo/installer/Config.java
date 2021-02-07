@@ -163,7 +163,7 @@ public class Config {
 		}
 	}
 
-	public File getShare() {
+	public File getData() {
 		switch (getHost()) {
 			case apple_darwin:
 				return new File(getDir(), "Contents/Resources");

@@ -39,7 +39,7 @@ public class Manager {
 				.withBucketName("quetoo-data")
 				.withPredicate(s -> true)
 				.withMapper(s -> new File(s.getKey()))
-				.withDestination(config.getShare())
+				.withDestination(config.getData())
 				.build();
 	}
 	
