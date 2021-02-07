@@ -26,11 +26,13 @@ public class Manager {
 	public Manager(final Config config) {
 		this.config = config;
 		
+		final String buildName = config.getBuild().toString();
+		
 		quetoo = new S3Sync.Builder()
 				.withHttpClient(config.getHttpClient())
 				.withBucketName("quetoo")
-				.withPredicate(s -> s.getKey().startsWith(config.getArchHostPrefix()))
-				.withMapper(s -> new File(s.getKey().replace(config.getArchHostPrefix(), "")))
+				.withPredicate(s -> s.getKey().startsWith(buildName))
+				.withMapper(s -> new File(s.getKey().replace(buildName, "")))
 				.withDestination(config.getDir())
 				.build();
 				

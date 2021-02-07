@@ -29,24 +29,10 @@ public class Main {
 	 */
 	public static void main(String args[]) {
 
-		final Option arch = Option.builder("a")
-				.longOpt("arch")
-				.hasArg()
-				.argName(getDefaults().getArch().toString())
-				.desc("the architecture name")
-				.build();
-		
 		final Option build = Option.builder("b")
 				.longOpt("build")
-				.argName(getDefaults().getArchHostPrefix())
+				.argName(getDefaults().getBuild().toString())
 				.desc("the build name (architecture and host)")
-				.build();
-
-		final Option host = Option.builder("h")
-				.longOpt("host")
-				.hasArg()
-				.argName(getDefaults().getHost().toString())
-				.desc("the host name")
 				.build();
 
 		final Option dir = Option.builder("d")
@@ -72,8 +58,6 @@ public class Main {
 
 		final Options options = new Options();
 
-		options.addOption(arch);
-		options.addOption(host);
 		options.addOption(build);
 		options.addOption(dir);
 		options.addOption(prune);
@@ -109,10 +93,8 @@ public class Main {
 						SystemUtils.JAVA_HOME + "/bin/java",
 						"-jar",
 						tempFile.getAbsolutePath(),
-						"--arch",
-						config.getArch().toString(),
-						"--host",
-						config.getHost().toString(),
+						"--build",
+						config.getBuild().toString(),
 						"--dir",
 						config.getDir().getAbsolutePath(),
 						"--prune",

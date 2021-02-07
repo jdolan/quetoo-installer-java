@@ -9,6 +9,8 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -66,9 +68,7 @@ public class Panel extends JPanel {
 		summary.setEditable(false);
 
 		summary.append("Updating " + manager.getConfig().getDir() + "\n");
-
-		final String prefix = manager.getConfig().getArchHostPrefix();
-		summary.append("Retrieving asset list for " + prefix + "..\n");
+		summary.append("Retrieving asset list for " + manager.getConfig().getBuild() + "..\n");
 
 		DefaultCaret caret = (DefaultCaret) summary.getCaret();
 		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
@@ -155,7 +155,7 @@ public class Panel extends JPanel {
 	private void onIndices(final List<Index> indices) {
 
 		final int count = indices.stream().mapToInt(Index::count).sum();
-		setStatus("Calculating udpate for " + count + " assets");
+		setStatus("Calculating update for " + count + " assets");
 	}
 
 	/**
@@ -167,8 +167,10 @@ public class Panel extends JPanel {
 
 		final int count = deltas.stream().mapToInt(Delta::count).sum();
 		final long size = deltas.stream().mapToLong(Delta::size).sum();
+		
+		final BigDecimal megabytes = new BigDecimal(size / 1024.0 / 1024.0).setScale(2, RoundingMode.UP);
 
-		setStatus("Updating " + count + " assets, " + size + " bytes");
+		setStatus("Updating " + count + " assets, " + megabytes + "MB");
 
 		progressBar.setIndeterminate(false);
 		progressBar.setMaximum(Math.max((int) size, 1));

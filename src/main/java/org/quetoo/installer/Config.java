@@ -3,8 +3,9 @@ package org.quetoo.installer;
 import java.io.File;
 import java.security.CodeSource;
 import java.util.Properties;
-
+	
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -19,8 +20,6 @@ public class Config {
 	public static final String NAME = "Quetoo Installer";
 	public static final String VERSION = "1.0.0";
 
-	public static final String ARCH = "quetoo.installer.arch";
-	public static final String HOST = "quetoo.installer.host";
 	public static final String BUILD = "quetoo.installer.build";
 	public static final String DIR = "quetoo.installer.dir";
 	public static final String PRUNE = "quetoo.installer.prune";
@@ -29,10 +28,9 @@ public class Config {
 	private static final Config defaults = new Config();
 
 	private final CodeSource codeSource;
-	private final File jar;
 	private final CloseableHttpClient httpClient;
-	private final Arch arch;
-	private final Host host;
+	private final Build build;
+	private final File jar;
 	private final File dir;
 	private final Boolean prune;
 	private final Boolean console;
@@ -57,11 +55,9 @@ public class Config {
 		jar = FileUtils.toFile(codeSource.getLocation());
 
 		if (properties.contains(BUILD)) {
-			arch = Arch.getArch(properties.getProperty(BUILD, SystemUtils.OS_ARCH));
-			host = Host.getHost(properties.getProperty(BUILD, SystemUtils.OS_NAME));
+			build = Build.getBuild(properties.getProperty(BUILD));
 		} else {
-			arch = Arch.getArch(properties.getProperty(ARCH, SystemUtils.OS_ARCH));
-			host = Host.getHost(properties.getProperty(HOST, SystemUtils.OS_NAME));
+			build = Build.getHostBuild();
 		}
 		
 		if (properties.contains(DIR)) {
@@ -78,28 +74,29 @@ public class Config {
 	 * @return The most appropriate default destination directory.
 	 */
 	private File resolveDir() {
+		
+		final File pwd = new File(SystemUtils.USER_DIR);
 
-		if (jar != null) {
-			File parent = jar.getParentFile();
-			switch (host) {
-				case apple_darwin:
-					do {
-						if (parent.getName().equalsIgnoreCase("Quetoo.app")) {
-							return parent;
-						}
-						parent = parent.getParentFile();
-					} while (parent != null);
-					
-					break;
-				default:
-					if (parent.getName().equalsIgnoreCase("lib")) {
-						return parent.getParentFile();
+		for (File file : new File[] { jar, pwd }) {			
+			do {
+				switch (build) {
+				case x86_64_apple_darwin:
+					if (StringUtils.equalsIgnoreCase(file.getName(), "Quetoo.app")) {
+						return file;
 					}
 					break;
-			}
+				default:
+					if (StringUtils.containsIgnoreCase(file.getName(), "Quetoo")) {
+						return file;
+					}
+					break;
+				}
+				
+				file = file.getParentFile();
+			} while (file != null);
 		}
-
-		return new File(SystemUtils.USER_DIR);
+		
+		return pwd;
 	}
 
 	/**
@@ -128,16 +125,8 @@ public class Config {
 		return httpClient;
 	}
 
-	public Arch getArch() {
-		return arch;
-	}
-
-	public Host getHost() {
-		return host;
-	}
-
-	public String getArchHostPrefix() {
-		return arch.toString() + "-" + host.toString().replace('_', '-');
+	public Build getBuild() {
+		return build;
 	}
 
 	public File getDir() {
@@ -145,8 +134,8 @@ public class Config {
 	}
 
 	public File getBin() {
-		switch (getHost()) {
-			case apple_darwin:
+		switch (build) {
+			case x86_64_apple_darwin:
 				return new File(getDir(), "Contents/MacOS");
 			default:
 				return new File(getDir(), "bin");
@@ -155,8 +144,8 @@ public class Config {
 
 
 	public File getLib() {
-		switch (getHost()) {
-			case apple_darwin:
+		switch (build) {
+			case x86_64_apple_darwin:
 				return new File(getDir(), "Contents/MacOS/lib");
 			default:
 				return new File(getDir(), "lib");
@@ -164,8 +153,8 @@ public class Config {
 	}
 
 	public File getData() {
-		switch (getHost()) {
-			case apple_darwin:
+		switch (build) {
+			case x86_64_apple_darwin:
 				return new File(getDir(), "Contents/Resources");
 			default:
 				return new File(getDir(), "share");
