@@ -54,13 +54,13 @@ public class Config {
 		codeSource = getClass().getProtectionDomain().getCodeSource();
 		jar = FileUtils.toFile(codeSource.getLocation());
 
-		if (properties.contains(BUILD)) {
+		if (properties.containsKey(BUILD)) {
 			build = Build.getBuild(properties.getProperty(BUILD));
 		} else {
 			build = Build.getHostBuild();
 		}
 		
-		if (properties.contains(DIR)) {
+		if (properties.containsKey(DIR)) {
 			dir = new File(properties.getProperty(DIR));
 		} else {
 			dir = resolveDir();
