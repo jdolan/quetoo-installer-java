@@ -31,6 +31,7 @@ public class Main {
 
 		final Option build = Option.builder("b")
 				.longOpt("build")
+				.hasArg()
 				.argName(getDefaults().getBuild().toString())
 				.desc("the build name (architecture and host)")
 				.build();
