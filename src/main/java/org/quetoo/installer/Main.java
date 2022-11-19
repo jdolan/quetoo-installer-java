@@ -4,6 +4,7 @@ import static org.quetoo.installer.Config.getDefaults;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
@@ -87,7 +88,7 @@ public class Main {
 		
 		if (config.shouldRelaunch()) {			
 			try {
-				final File tempFile = File.createTempFile("quetoo-installer", ".jar");
+				final File tempFile = Files.createTempFile("quetoo-installer",".jar").toFile();
 				FileUtils.copyFile(config.getJar(), tempFile);
 
 				new ProcessBuilder().inheritIO().command(new String[] {
