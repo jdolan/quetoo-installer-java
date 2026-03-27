@@ -4,6 +4,9 @@ target/
 .settings/
 dependency-reduced-pom.xml
 
+# Local tool installs (Maven, etc.)
+.tools/
+
 # IDE
 *.iml
 .idea/

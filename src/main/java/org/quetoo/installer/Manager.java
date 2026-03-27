@@ -70,7 +70,7 @@ public class Manager {
    * @return An Observable yielding the synchronized files.
    */
   public Observable<File> sync(final Observable<Delta> deltas) {
-    return deltas.concatMap(delta -> delta.getIndex().getSync().sync(delta))
+    return deltas.flatMap(delta -> delta.getIndex().getSync().sync(delta))
         .doOnNext(file -> {
           if (file.getParentFile().equals(config.getBin())) {
             file.setExecutable(true);

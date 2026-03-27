@@ -1,5 +1,32 @@
 # Copilot Instructions
 
+## Prerequisites
+
+Requires **Java 21+** and **Apache Maven 3.9+**.
+
+If Maven is not installed, download and extract it (no admin required):
+
+```powershell
+# Download Maven 3.9.8
+Invoke-WebRequest -Uri "https://archive.apache.org/dist/maven/maven-3/3.9.8/binaries/apache-maven-3.9.8-bin.zip" -OutFile "$env:TEMP\maven.zip" -UseBasicParsing
+
+# Extract to .tools/ inside the repo (gitignored)
+Expand-Archive -Path "$env:TEMP\maven.zip" -DestinationPath ".tools" -Force
+
+# Add to PATH for the current session
+$env:PATH = "$PWD\.tools\apache-maven-3.9.8\bin;$env:PATH"
+```
+
+Verify with `mvn -version`.
+
+Note: `.mvn/jvm.config` includes `--add-opens` to suppress Maven reflection warnings. On Java 22+, additional harmless warnings from Maven's jansi/guava/sisu libraries may appear — these will be resolved in Maven 4.0.
+
+When running Maven in PowerShell, pipe through `Out-Host` to avoid stderr warnings showing as red errors:
+
+```powershell
+mvn package -DskipTests 2>&1 | Out-Host
+```
+
 ## Build & Test
 
 ```bash
